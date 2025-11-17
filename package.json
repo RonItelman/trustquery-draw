@@ -46,7 +46,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/RonItelman/trustquery-draw.git"
+    "url": "git+https://github.com/RonItelman/trustquery-draw.git"
   },
   "dependencies": {
     "dagre": "^0.8.5",
