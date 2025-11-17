@@ -1,0 +1,16 @@
+{
+  "tql-triggers": {
+    "draw": [
+      {
+        "type": "regex",
+        "category": "draw-command",
+        "regex": ["=draw\\(([^)]*)\\)"],
+        "handler": {
+          "render": true,
+          "message-state": "draw",
+          "message": "Draw command detected"
+        }
+      }
+    ]
+  }
+}
