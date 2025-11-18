@@ -30,11 +30,6 @@ const StyleInspector = ({ selectedNode, onStyleChange, onCopyStyle, onPasteStyle
       // Merge defaults with styleOverrides (styleOverrides take precedence)
       const mergedStyle = { ...defaults, ...styleOverrides };
 
-      console.log('[StyleInspector] Node type:', selectedNode.type);
-      console.log('[StyleInspector] Default style:', defaults);
-      console.log('[StyleInspector] Style overrides:', styleOverrides);
-      console.log('[StyleInspector] Merged style:', mergedStyle);
-
       const extractedStyle = {
         background: normalizeHexColor(mergedStyle.background) || '#ffffff',
         borderColor: normalizeHexColor(mergedStyle.border?.split(' ')[2]) || '#222222',
@@ -44,13 +39,11 @@ const StyleInspector = ({ selectedNode, onStyleChange, onCopyStyle, onPasteStyle
         color: normalizeHexColor(mergedStyle.color) || '#000000',
       };
 
-      console.log('[StyleInspector] Extracted style:', extractedStyle);
       setStyle(extractedStyle);
     }
   }, [selectedNode]);
 
   const handleChange = (property, value) => {
-    console.log('[StyleInspector] Style change requested:', property, value);
     const newStyle = { ...style, [property]: value };
     setStyle(newStyle);
 
@@ -62,9 +55,6 @@ const StyleInspector = ({ selectedNode, onStyleChange, onCopyStyle, onPasteStyle
       padding: `${newStyle.padding}px`,
       color: newStyle.color,
     };
-
-    console.log('[StyleInspector] Converted to ReactFlow format:', reactFlowStyle);
-    console.log('[StyleInspector] Calling onStyleChange for node:', selectedNode.id);
 
     if (onStyleChange) {
       onStyleChange(selectedNode.id, reactFlowStyle);

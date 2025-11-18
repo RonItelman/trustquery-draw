@@ -10,11 +10,6 @@ const RectangleNode = ({ data, selected, style = {} }) => {
   const styleOverrides = data.styleOverrides || {};
   const nodeStyle = { ...defaultStyle, ...styleOverrides };
 
-  console.log('[RectangleNode] Rendering node:', data.label);
-  console.log('[RectangleNode] style prop (ReactFlow wrapper):', style);
-  console.log('[RectangleNode] data.styleOverrides:', styleOverrides);
-  console.log('[RectangleNode] Final nodeStyle applied to .node-content:', nodeStyle);
-
   return (
     <>
       {/* Selection Indicators */}

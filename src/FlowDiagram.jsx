@@ -56,7 +56,6 @@ const FlowDiagram = ({
         // If node has any styles in node.style, remove them completely
         // ReactFlow applies node.style to the wrapper, which we don't want
         if (node.style && Object.keys(node.style).length > 0) {
-          console.log('[FlowDiagram] Removing wrapper styles from node:', node.id, node.style);
           const { style, ...nodeWithoutStyle } = node;
           return nodeWithoutStyle;
         }
@@ -101,7 +100,6 @@ const FlowDiagram = ({
 
   // Handle node selection
   const handleNodeClick = useCallback((event, node) => {
-    console.log('[FlowDiagram] Node clicked:', node.id);
     setSelectedNode(node);
     if (onNodeSelected) {
       onNodeSelected(node, node.style);
@@ -116,25 +114,17 @@ const FlowDiagram = ({
 
   // Handle opening style inspector
   const handleOpenStyleInspector = useCallback(() => {
-    console.log('[FlowDiagram] Opening style inspector');
     setShowStyleInspector(true);
   }, []);
 
   // Handle style change from inspector
   const handleStyleChange = useCallback((nodeId, newStyle) => {
-    console.log('[FlowDiagram] handleStyleChange called for node:', nodeId);
-    console.log('[FlowDiagram] New style object:', newStyle);
-
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
-          console.log('[FlowDiagram] Found node to update:', node.id);
-          console.log('[FlowDiagram] Current node.style:', node.style);
-          console.log('[FlowDiagram] Current node.data.styleOverrides:', node.data?.styleOverrides);
-
           // Only update data.styleOverrides - never touch node.style
           // ReactFlow applies node.style to the wrapper, which we don't want
-          const updatedNode = {
+          return {
             ...node,
             data: {
               ...node.data,
@@ -144,11 +134,6 @@ const FlowDiagram = ({
               },
             },
           };
-
-          console.log('[FlowDiagram] Updated node.style:', updatedNode.style);
-          console.log('[FlowDiagram] Updated node.data.styleOverrides:', updatedNode.data.styleOverrides);
-
-          return updatedNode;
         }
         return node;
       })

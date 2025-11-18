@@ -10,11 +10,6 @@ const CircleNode = ({ data, selected, style = {} }) => {
   const styleOverrides = data.styleOverrides || {};
   const nodeStyle = { ...defaultStyle, ...styleOverrides };
 
-  console.log('[CircleNode] Rendering node:', data.label);
-  console.log('[CircleNode] style prop (ReactFlow wrapper):', style);
-  console.log('[CircleNode] data.styleOverrides:', styleOverrides);
-  console.log('[CircleNode] Final nodeStyle applied to .node-content:', nodeStyle);
-
   return (
     <>
       {/* Selection Indicators */}

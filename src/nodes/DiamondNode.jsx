@@ -10,17 +10,10 @@ const DiamondNode = ({ data, selected, style = {} }) => {
   const styleOverrides = data.styleOverrides || {};
   const nodeStyle = { ...defaultStyle, ...styleOverrides };
 
-  console.log('[DiamondNode] Rendering node:', data.label);
-  console.log('[DiamondNode] style prop (ReactFlow wrapper):', style);
-  console.log('[DiamondNode] data.styleOverrides:', styleOverrides);
-  console.log('[DiamondNode] Merged nodeStyle:', nodeStyle);
-
   // Extract background and border for SVG
   const backgroundColor = nodeStyle.background;
   const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
   const borderWidth = nodeStyle.border?.split(' ')[0] || '2px';
-
-  console.log('[DiamondNode] SVG colors - fill:', backgroundColor, 'stroke:', borderColor);
 
   // Container needs explicit dimensions for SVG to render
   const containerStyle = {
@@ -62,7 +55,6 @@ const DiamondNode = ({ data, selected, style = {} }) => {
         <div
           onClick={(e) => {
             e.stopPropagation();
-            console.log('[DiamondNode] Gear button clicked');
             data.onOpenStyleInspector();
           }}
           style={{

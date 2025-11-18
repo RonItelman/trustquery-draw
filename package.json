@@ -1,6 +1,6 @@
 {
   "name": "@trustquery/trustquery-draw",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Interactive diagram rendering library - converts Mermaid syntax to draggable ReactFlow diagrams",
   "type": "module",
   "main": "dist/trustquery-draw.js",

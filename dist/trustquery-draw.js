@@ -25257,10 +25257,6 @@ const RectangleNode = ({
     ...defaultStyle,
     ...styleOverrides
   };
-  console.log('[RectangleNode] Rendering node:', data.label);
-  console.log('[RectangleNode] style prop (ReactFlow wrapper):', style);
-  console.log('[RectangleNode] data.styleOverrides:', styleOverrides);
-  console.log('[RectangleNode] Final nodeStyle applied to .node-content:', nodeStyle);
   return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
@@ -25369,16 +25365,11 @@ const DiamondNode = ({
     ...defaultStyle,
     ...styleOverrides
   };
-  console.log('[DiamondNode] Rendering node:', data.label);
-  console.log('[DiamondNode] style prop (ReactFlow wrapper):', style);
-  console.log('[DiamondNode] data.styleOverrides:', styleOverrides);
-  console.log('[DiamondNode] Merged nodeStyle:', nodeStyle);
 
   // Extract background and border for SVG
   const backgroundColor = nodeStyle.background;
   const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
   const borderWidth = nodeStyle.border?.split(' ')[0] || '2px';
-  console.log('[DiamondNode] SVG colors - fill:', backgroundColor, 'stroke:', borderColor);
 
   // Container needs explicit dimensions for SVG to render
   const containerStyle = {
@@ -25451,7 +25442,6 @@ const DiamondNode = ({
   })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
     onClick: e => {
       e.stopPropagation();
-      console.log('[DiamondNode] Gear button clicked');
       data.onOpenStyleInspector();
     },
     style: {
@@ -25514,10 +25504,6 @@ const CircleNode = ({
     ...defaultStyle,
     ...styleOverrides
   };
-  console.log('[CircleNode] Rendering node:', data.label);
-  console.log('[CircleNode] style prop (ReactFlow wrapper):', style);
-  console.log('[CircleNode] data.styleOverrides:', styleOverrides);
-  console.log('[CircleNode] Final nodeStyle applied to .node-content:', nodeStyle);
   return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
@@ -25648,10 +25634,6 @@ const StyleInspector = ({
         ...defaults,
         ...styleOverrides
       };
-      console.log('[StyleInspector] Node type:', selectedNode.type);
-      console.log('[StyleInspector] Default style:', defaults);
-      console.log('[StyleInspector] Style overrides:', styleOverrides);
-      console.log('[StyleInspector] Merged style:', mergedStyle);
       const extractedStyle = {
         background: normalizeHexColor(mergedStyle.background) || '#ffffff',
         borderColor: normalizeHexColor(mergedStyle.border?.split(' ')[2]) || '#222222',
@@ -25660,12 +25642,10 @@ const StyleInspector = ({
         padding: mergedStyle.padding?.replace('px', '') || '10',
         color: normalizeHexColor(mergedStyle.color) || '#000000'
       };
-      console.log('[StyleInspector] Extracted style:', extractedStyle);
       setStyle(extractedStyle);
     }
   }, [selectedNode]);
   const handleChange = (property, value) => {
-    console.log('[StyleInspector] Style change requested:', property, value);
     const newStyle = {
       ...style,
       [property]: value
@@ -25680,8 +25660,6 @@ const StyleInspector = ({
       padding: `${newStyle.padding}px`,
       color: newStyle.color
     };
-    console.log('[StyleInspector] Converted to ReactFlow format:', reactFlowStyle);
-    console.log('[StyleInspector] Calling onStyleChange for node:', selectedNode.id);
     if (onStyleChange) {
       onStyleChange(selectedNode.id, reactFlowStyle);
     }
@@ -25884,7 +25862,6 @@ const FlowDiagram = ({
       // If node has any styles in node.style, remove them completely
       // ReactFlow applies node.style to the wrapper, which we don't want
       if (node.style && Object.keys(node.style).length > 0) {
-        console.log('[FlowDiagram] Removing wrapper styles from node:', node.id, node.style);
         const {
           style,
           ...nodeWithoutStyle
@@ -25924,7 +25901,6 @@ const FlowDiagram = ({
 
   // Handle node selection
   const handleNodeClick = reactExports.useCallback((event, node) => {
-    console.log('[FlowDiagram] Node clicked:', node.id);
     setSelectedNode(node);
     if (onNodeSelected) {
       onNodeSelected(node, node.style);
@@ -25939,23 +25915,16 @@ const FlowDiagram = ({
 
   // Handle opening style inspector
   const handleOpenStyleInspector = reactExports.useCallback(() => {
-    console.log('[FlowDiagram] Opening style inspector');
     setShowStyleInspector(true);
   }, []);
 
   // Handle style change from inspector
   const handleStyleChange = reactExports.useCallback((nodeId, newStyle) => {
-    console.log('[FlowDiagram] handleStyleChange called for node:', nodeId);
-    console.log('[FlowDiagram] New style object:', newStyle);
     setNodes(nds => nds.map(node => {
       if (node.id === nodeId) {
-        console.log('[FlowDiagram] Found node to update:', node.id);
-        console.log('[FlowDiagram] Current node.style:', node.style);
-        console.log('[FlowDiagram] Current node.data.styleOverrides:', node.data?.styleOverrides);
-
         // Only update data.styleOverrides - never touch node.style
         // ReactFlow applies node.style to the wrapper, which we don't want
-        const updatedNode = {
+        return {
           ...node,
           data: {
             ...node.data,
@@ -25965,9 +25934,6 @@ const FlowDiagram = ({
             }
           }
         };
-        console.log('[FlowDiagram] Updated node.style:', updatedNode.style);
-        console.log('[FlowDiagram] Updated node.data.styleOverrides:', updatedNode.data.styleOverrides);
-        return updatedNode;
       }
       return node;
     }));
