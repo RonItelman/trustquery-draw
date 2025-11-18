@@ -22,7 +22,7 @@ const CircleNode = ({ data, selected, style = {} }) => {
             right: -6,
             bottom: -6,
             border: '2px solid #2196F3',
-            borderRadius: '50%',
+            borderRadius: '6px',
             pointerEvents: 'none',
             zIndex: -1,
           }}

@@ -34,9 +34,8 @@ export default class ReactFlowHandler {
     wrapper.className = 'tq-draw-reactflow-wrapper';
     wrapper.style.cssText = `
       margin: 20px;
-      padding: 16px;
       background: #f5f5f5;
-      border-radius: 8px;      
+      border-radius: 8px;
     `;
 
     // Create container for ReactFlow

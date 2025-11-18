@@ -25512,7 +25512,7 @@ const CircleNode = ({
       right: -6,
       bottom: -6,
       border: '2px solid #2196F3',
-      borderRadius: '50%',
+      borderRadius: '6px',
       pointerEvents: 'none',
       zIndex: -1
     }
@@ -39904,9 +39904,8 @@ class ReactFlowHandler {
     wrapper.className = 'tq-draw-reactflow-wrapper';
     wrapper.style.cssText = `
       margin: 20px;
-      padding: 16px;
       background: #f5f5f5;
-      border-radius: 8px;      
+      border-radius: 8px;
     `;
 
     // Create container for ReactFlow
