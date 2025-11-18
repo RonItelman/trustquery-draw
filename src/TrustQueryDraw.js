@@ -7,6 +7,13 @@ export default class TrustQueryDraw {
    * Render a mermaid diagram and return a DOM element
    * @param {string} mermaidCode - The mermaid diagram code
    * @param {Object} options - Configuration options
+   * @param {number} options.width - Canvas width (default: 700)
+   * @param {number} options.height - Canvas height (default: 500)
+   * @param {boolean} options.enableStyleInspector - Show style inspector (default: true)
+   * @param {Function} options.onNodeSelected - Callback when node is selected
+   * @param {Function} options.onStyleChange - Callback when style changes
+   * @param {Function} options.onCopyStyle - Callback when copying style
+   * @param {Function} options.onPasteStyleToChat - Callback when pasting style to chat
    * @returns {HTMLElement} The rendered diagram element
    */
   static renderMermaid(mermaidCode, options = {}) {
@@ -18,6 +25,11 @@ export default class TrustQueryDraw {
     const handler = new ReactFlowHandler(container, {
       canvasWidth: options.width || 700,
       canvasHeight: options.height || 500,
+      enableStyleInspector: options.enableStyleInspector !== false,
+      onNodeSelected: options.onNodeSelected,
+      onStyleChange: options.onStyleChange,
+      onCopyStyle: options.onCopyStyle,
+      onPasteStyleToChat: options.onPasteStyleToChat,
       ...options
     });
 
@@ -121,7 +133,7 @@ export default class TrustQueryDraw {
   }
 
   /**
-   * Scan textarea for =mermaid` commands
+   * Scan textarea for =mermaid` commands and ```mermaid markdown blocks
    */
   scan() {
     const text = this.textarea.value;
@@ -129,8 +141,25 @@ export default class TrustQueryDraw {
     // Find all =mermaid` commands
     const mermaidCommands = this.findMermaidCommands(text);
 
+    // Find all ```mermaid markdown blocks
+    const markdownBlocks = this.findMarkdownMermaidBlocks(text);
+
+    // Process =mermaid` commands
     mermaidCommands.forEach(({ code, fullMatch }) => {
-      console.log('[TrustQueryDraw] Detected mermaid command:', fullMatch);
+      console.log('[TrustQueryDraw] Detected =mermaid command:', fullMatch);
+
+      // Create visualization with Mermaid code
+      this.drawHandler.createVisualization(code, 'mermaid');
+
+      // Trigger callback
+      if (this.options.onDraw) {
+        this.options.onDraw({ params: code, fullMatch, type: 'mermaid' });
+      }
+    });
+
+    // Process ```mermaid markdown blocks
+    markdownBlocks.forEach(({ code, fullMatch }) => {
+      console.log('[TrustQueryDraw] Detected ```mermaid block:', fullMatch);
 
       // Create visualization with Mermaid code
       this.drawHandler.createVisualization(code, 'mermaid');
@@ -195,6 +224,43 @@ export default class TrustQueryDraw {
     }
 
     return commands;
+  }
+
+  /**
+   * Find all ```mermaid markdown code blocks in text
+   * @param {string} text - Text to search
+   * @returns {Array} Array of {code, fullMatch} objects
+   */
+  findMarkdownMermaidBlocks(text) {
+    const blocks = [];
+    const pattern = /```mermaid\n/g;
+    let match;
+
+    while ((match = pattern.exec(text)) !== null) {
+      const startIndex = match.index;
+      const codeStart = pattern.lastIndex;
+
+      // Find the closing ```
+      const closingPattern = /\n```/;
+      const remainingText = text.substring(codeStart);
+      const closingMatch = closingPattern.exec(remainingText);
+
+      if (closingMatch) {
+        const code = remainingText.substring(0, closingMatch.index);
+        const endIndex = codeStart + closingMatch.index + closingMatch[0].length;
+        const fullMatch = text.substring(startIndex, endIndex);
+
+        blocks.push({
+          code: code.trim(),
+          fullMatch
+        });
+
+        // Move pattern index past this match
+        pattern.lastIndex = endIndex;
+      }
+    }
+
+    return blocks;
   }
 
   /**

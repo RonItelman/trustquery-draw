@@ -64,14 +64,11 @@ export class MermaidParser {
    * Parse a single line of mermaid code
    */
   parseLine(line, nodes, edges) {
-    console.log('[MermaidParser] Parsing line:', line);
-
     // Match patterns like: A[Text] --> B{Question}
     // Supports: -->, -->|label|, -.->, -.->|label|
     const connectionPattern = /([A-Za-z0-9_]+)(\[[^\]]+\]|\{[^\}]+\}|\([^\)]+\)|>\([^\)]+\)>)?[\s]*(-->|-.->|==>)(\|[^\|]+\|)?[\s]*([A-Za-z0-9_]+)(\[[^\]]+\]|\{[^\}]+\}|\([^\)]+\)|>\([^\)]+\)>)?/;
 
     const match = line.match(connectionPattern);
-    console.log('[MermaidParser] Match result:', match);
 
     if (match) {
       const sourceId = match[1];
@@ -114,50 +111,34 @@ export class MermaidParser {
    */
   createNode(id, labelWithBrackets) {
     let label = id;
-    let type = 'default';
-    let style = {};
+    let type = 'rectangle'; // Default to rectangle node type
 
     if (labelWithBrackets) {
       // Extract label and determine node type based on brackets
       if (labelWithBrackets.startsWith('[')) {
         // Rectangle: [Text]
         label = labelWithBrackets.slice(1, -1);
-        type = 'default';
-        style = {
-          borderRadius: '3px',
-          padding: '10px',
-          border: '2px solid #1a192b',
-          background: '#fff',
-        };
+        type = 'rectangle';
       } else if (labelWithBrackets.startsWith('{')) {
         // Diamond: {Text}
         label = labelWithBrackets.slice(1, -1);
-        type = 'default';
-        style = {
-          borderRadius: '0',
-          padding: '10px 20px',
-          border: '2px solid #1a192b',
-          background: '#fff4e6',
-        };
+        type = 'diamond';
       } else if (labelWithBrackets.startsWith('(')) {
-        // Rounded: (Text)
+        // Circle: (Text)
         label = labelWithBrackets.slice(1, -1);
-        type = 'default';
-        style = {
-          borderRadius: '20px',
-          padding: '10px 20px',
-          border: '2px solid #1a192b',
-          background: '#e3f2fd',
-        };
+        type = 'circle';
       }
     }
 
+    // MermaidParser only converts syntax to ReactFlow config
+    // Node components handle their own styling
     return {
       id,
       type,
-      data: { label },
+      data: {
+        label,
+      },
       position: { x: 0, y: 0 }, // Will be set by layout algorithm
-      style,
       draggable: true,
     };
   }
@@ -231,15 +212,12 @@ export class MermaidParser {
         y: nodeWithPosition.y - 25,
       };
 
-      console.log(`[MermaidParser] Node ${node.id} positioned at:`, JSON.stringify(position));
-
       return {
         ...node,
         position,
       };
     });
 
-    console.log('[MermaidParser] Final layouted nodes:', JSON.stringify(layoutedNodes, null, 2));
     return { nodes: layoutedNodes, edges };
   }
 }

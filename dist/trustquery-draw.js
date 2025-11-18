@@ -17712,14 +17712,14 @@ function creator(name) {
 
 function none() {}
 
-function selector$h(selector) {
+function selector$1(selector) {
   return selector == null ? none : function() {
     return this.querySelector(selector);
   };
 }
 
 function selection_select(select) {
-  if (typeof select !== "function") select = selector$h(select);
+  if (typeof select !== "function") select = selector$1(select);
 
   for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
     for (var group = groups[j], n = group.length, subgroup = subgroups[j] = new Array(n), node, subnode, i = 0; i < n; ++i) {
@@ -18391,7 +18391,7 @@ function constantNull() {
 
 function selection_insert(name, before) {
   var create = typeof name === "function" ? name : creator(name),
-      select = before == null ? constantNull : typeof before === "function" ? before : selector$h(before);
+      select = before == null ? constantNull : typeof before === "function" ? before : selector$1(before);
   return this.select(function() {
     return this.insertBefore(create.apply(this, arguments), select.apply(this, arguments) || null);
   });
@@ -20235,7 +20235,7 @@ function transition_select(select) {
   var name = this._name,
       id = this._id;
 
-  if (typeof select !== "function") select = selector$h(select);
+  if (typeof select !== "function") select = selector$1(select);
 
   for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
     for (var group = groups[j], n = group.length, subgroup = subgroups[j] = new Array(n), node, subnode, i = 0; i < n; ++i) {
@@ -25113,84 +25113,6 @@ function createUseItemsState(applyChanges) {
 const useNodesState = createUseItemsState(applyNodeChanges);
 const useEdgesState = createUseItemsState(applyEdgeChanges);
 
-function PlusIcon() {
-    return (React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 32 32" },
-        React.createElement("path", { d: "M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z" })));
-}
-
-function MinusIcon() {
-    return (React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 32 5" },
-        React.createElement("path", { d: "M0 0h32v4.2H0z" })));
-}
-
-function FitViewIcon() {
-    return (React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 32 30" },
-        React.createElement("path", { d: "M3.692 4.63c0-.53.4-.938.939-.938h5.215V0H4.708C2.13 0 0 2.054 0 4.63v5.216h3.692V4.631zM27.354 0h-5.2v3.692h5.17c.53 0 .984.4.984.939v5.215H32V4.631A4.624 4.624 0 0027.354 0zm.954 24.83c0 .532-.4.94-.939.94h-5.215v3.768h5.215c2.577 0 4.631-2.13 4.631-4.707v-5.139h-3.692v5.139zm-23.677.94c-.531 0-.939-.4-.939-.94v-5.138H0v5.139c0 2.577 2.13 4.707 4.708 4.707h5.138V25.77H4.631z" })));
-}
-
-function LockIcon() {
-    return (React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 25 32" },
-        React.createElement("path", { d: "M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0 8 0 4.571 3.429 4.571 7.619v3.048H3.048A3.056 3.056 0 000 13.714v15.238A3.056 3.056 0 003.048 32h18.285a3.056 3.056 0 003.048-3.048V13.714a3.056 3.056 0 00-3.048-3.047zM12.19 24.533a3.056 3.056 0 01-3.047-3.047 3.056 3.056 0 013.047-3.048 3.056 3.056 0 013.048 3.048 3.056 3.056 0 01-3.048 3.047zm4.724-13.866H7.467V7.619c0-2.59 2.133-4.724 4.723-4.724 2.591 0 4.724 2.133 4.724 4.724v3.048z" })));
-}
-
-function UnlockIcon() {
-    return (React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 25 32" },
-        React.createElement("path", { d: "M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0c-4.114 1.828-1.37 2.133.305 2.438 1.676.305 4.42 2.59 4.42 5.181v3.048H3.047A3.056 3.056 0 000 13.714v15.238A3.056 3.056 0 003.048 32h18.285a3.056 3.056 0 003.048-3.048V13.714a3.056 3.056 0 00-3.048-3.047zM12.19 24.533a3.056 3.056 0 01-3.047-3.047 3.056 3.056 0 013.047-3.048 3.056 3.056 0 013.048 3.048 3.056 3.056 0 01-3.048 3.047z" })));
-}
-
-const ControlButton = ({ children, className, ...rest }) => (React.createElement("button", { type: "button", className: cc(['react-flow__controls-button', className]), ...rest }, children));
-ControlButton.displayName = 'ControlButton';
-
-const selector$1 = (s) => ({
-    isInteractive: s.nodesDraggable || s.nodesConnectable || s.elementsSelectable,
-    minZoomReached: s.transform[2] <= s.minZoom,
-    maxZoomReached: s.transform[2] >= s.maxZoom,
-});
-const Controls = ({ style, showZoom = true, showFitView = true, showInteractive = true, fitViewOptions, onZoomIn, onZoomOut, onFitView, onInteractiveChange, className, children, position = 'bottom-left', }) => {
-    const store = useStoreApi();
-    const [isVisible, setIsVisible] = reactExports.useState(false);
-    const { isInteractive, minZoomReached, maxZoomReached } = useStore(selector$1, shallow$1);
-    const { zoomIn, zoomOut, fitView } = useReactFlow();
-    reactExports.useEffect(() => {
-        setIsVisible(true);
-    }, []);
-    if (!isVisible) {
-        return null;
-    }
-    const onZoomInHandler = () => {
-        zoomIn();
-        onZoomIn?.();
-    };
-    const onZoomOutHandler = () => {
-        zoomOut();
-        onZoomOut?.();
-    };
-    const onFitViewHandler = () => {
-        fitView(fitViewOptions);
-        onFitView?.();
-    };
-    const onToggleInteractivity = () => {
-        store.setState({
-            nodesDraggable: !isInteractive,
-            nodesConnectable: !isInteractive,
-            elementsSelectable: !isInteractive,
-        });
-        onInteractiveChange?.(!isInteractive);
-    };
-    return (React.createElement(Panel, { className: cc(['react-flow__controls', className]), position: position, style: style, "data-testid": "rf__controls" },
-        showZoom && (React.createElement(React.Fragment, null,
-            React.createElement(ControlButton, { onClick: onZoomInHandler, className: "react-flow__controls-zoomin", title: "zoom in", "aria-label": "zoom in", disabled: maxZoomReached },
-                React.createElement(PlusIcon, null)),
-            React.createElement(ControlButton, { onClick: onZoomOutHandler, className: "react-flow__controls-zoomout", title: "zoom out", "aria-label": "zoom out", disabled: minZoomReached },
-                React.createElement(MinusIcon, null)))),
-        showFitView && (React.createElement(ControlButton, { className: "react-flow__controls-fitview", onClick: onFitViewHandler, title: "fit view", "aria-label": "fit view" },
-            React.createElement(FitViewIcon, null))),
-        showInteractive && (React.createElement(ControlButton, { className: "react-flow__controls-interactive", onClick: onToggleInteractivity, title: "toggle interactivity", "aria-label": "toggle interactivity" }, isInteractive ? React.createElement(UnlockIcon, null) : React.createElement(LockIcon, null))),
-        children));
-};
-Controls.displayName = 'Controls';
-var Controls$1 = reactExports.memo(Controls);
-
 var BackgroundVariant;
 (function (BackgroundVariant) {
     BackgroundVariant["Lines"] = "lines";
@@ -25278,17 +25200,700 @@ function styleInject(css, ref) {
 var css_248z = ".react-flow{direction:ltr}.react-flow__container{height:100%;left:0;position:absolute;top:0;width:100%}.react-flow__pane{cursor:-webkit-grab;cursor:grab;z-index:1}.react-flow__pane.selection{cursor:pointer}.react-flow__pane.dragging{cursor:-webkit-grabbing;cursor:grabbing}.react-flow__viewport{pointer-events:none;transform-origin:0 0;z-index:2}.react-flow__renderer{z-index:4}.react-flow__selection{z-index:6}.react-flow__nodesselection-rect:focus,.react-flow__nodesselection-rect:focus-visible{outline:none}.react-flow .react-flow__edges{overflow:visible;pointer-events:none}.react-flow__connection-path,.react-flow__edge-path{stroke:#b1b1b7;stroke-width:1;fill:none}.react-flow__edge{cursor:pointer;pointer-events:visibleStroke}.react-flow__edge.animated path{stroke-dasharray:5;-webkit-animation:dashdraw .5s linear infinite;animation:dashdraw .5s linear infinite}.react-flow__edge.animated path.react-flow__edge-interaction{stroke-dasharray:none;-webkit-animation:none;animation:none}.react-flow__edge.inactive{pointer-events:none}.react-flow__edge.selected,.react-flow__edge:focus,.react-flow__edge:focus-visible{outline:none}.react-flow__edge.selected .react-flow__edge-path,.react-flow__edge:focus .react-flow__edge-path,.react-flow__edge:focus-visible .react-flow__edge-path{stroke:#555}.react-flow__edge-textwrapper{pointer-events:all}.react-flow__edge-textbg{fill:#fff}.react-flow__edge .react-flow__edge-text{pointer-events:none;-webkit-user-select:none;-moz-user-select:none;user-select:none}.react-flow__connection{pointer-events:none}.react-flow__connection .animated{stroke-dasharray:5;-webkit-animation:dashdraw .5s linear infinite;animation:dashdraw .5s linear infinite}.react-flow__connectionline{z-index:1001}.react-flow__nodes{pointer-events:none;transform-origin:0 0}.react-flow__node{box-sizing:border-box;cursor:-webkit-grab;cursor:grab;pointer-events:all;position:absolute;transform-origin:0 0;-webkit-user-select:none;-moz-user-select:none;user-select:none}.react-flow__node.dragging{cursor:-webkit-grabbing;cursor:grabbing}.react-flow__nodesselection{pointer-events:none;transform-origin:left top;z-index:3}.react-flow__nodesselection-rect{cursor:-webkit-grab;cursor:grab;pointer-events:all;position:absolute}.react-flow__handle{background:#1a192b;border:1px solid #fff;border-radius:100%;height:6px;min-height:5px;min-width:5px;pointer-events:none;position:absolute;width:6px}.react-flow__handle.connectionindicator{cursor:crosshair;pointer-events:all}.react-flow__handle-bottom{bottom:-4px;left:50%;top:auto;transform:translate(-50%)}.react-flow__handle-top{left:50%;top:-4px;transform:translate(-50%)}.react-flow__handle-left{left:-4px;top:50%;transform:translateY(-50%)}.react-flow__handle-right{right:-4px;top:50%;transform:translateY(-50%)}.react-flow__edgeupdater{cursor:move;pointer-events:all}.react-flow__panel{margin:15px;position:absolute;z-index:5}.react-flow__panel.top{top:0}.react-flow__panel.bottom{bottom:0}.react-flow__panel.left{left:0}.react-flow__panel.right{right:0}.react-flow__panel.center{left:50%;transform:translateX(-50%)}.react-flow__attribution{background:hsla(0,0%,100%,.5);font-size:10px;margin:0;padding:2px 3px}.react-flow__attribution a{color:#999;text-decoration:none}@-webkit-keyframes dashdraw{0%{stroke-dashoffset:10}}@keyframes dashdraw{0%{stroke-dashoffset:10}}.react-flow__edgelabel-renderer{height:100%;pointer-events:none;position:absolute;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:100%}.react-flow__edge.updating .react-flow__edge-path{stroke:#777}.react-flow__edge-text{font-size:10px}.react-flow__node.selectable:focus,.react-flow__node.selectable:focus-visible{outline:none}.react-flow__node-default,.react-flow__node-group,.react-flow__node-input,.react-flow__node-output{background-color:#fff;border:1px solid #1a192b;border-radius:3px;color:#222;font-size:12px;padding:10px;text-align:center;width:150px}.react-flow__node-default.selectable:hover,.react-flow__node-group.selectable:hover,.react-flow__node-input.selectable:hover,.react-flow__node-output.selectable:hover{box-shadow:0 1px 4px 1px rgba(0,0,0,.08)}.react-flow__node-default.selectable.selected,.react-flow__node-default.selectable:focus,.react-flow__node-default.selectable:focus-visible,.react-flow__node-group.selectable.selected,.react-flow__node-group.selectable:focus,.react-flow__node-group.selectable:focus-visible,.react-flow__node-input.selectable.selected,.react-flow__node-input.selectable:focus,.react-flow__node-input.selectable:focus-visible,.react-flow__node-output.selectable.selected,.react-flow__node-output.selectable:focus,.react-flow__node-output.selectable:focus-visible{box-shadow:0 0 0 .5px #1a192b}.react-flow__node-group{background-color:hsla(0,0%,94%,.25)}.react-flow__nodesselection-rect,.react-flow__selection{background:rgba(0,89,220,.08);border:1px dotted rgba(0,89,220,.8)}.react-flow__nodesselection-rect:focus,.react-flow__nodesselection-rect:focus-visible,.react-flow__selection:focus,.react-flow__selection:focus-visible{outline:none}.react-flow__controls{box-shadow:0 0 2px 1px rgba(0,0,0,.08)}.react-flow__controls-button{align-items:center;background:#fefefe;border:none;border-bottom:1px solid #eee;box-sizing:content-box;cursor:pointer;display:flex;height:16px;justify-content:center;padding:5px;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:16px}.react-flow__controls-button:hover{background:#f4f4f4}.react-flow__controls-button svg{max-height:12px;max-width:12px;width:100%}.react-flow__controls-button:disabled{pointer-events:none}.react-flow__controls-button:disabled svg{fill-opacity:.4}.react-flow__minimap{background-color:#fff}.react-flow__minimap svg{display:block}.react-flow__resize-control{position:absolute}.react-flow__resize-control.left,.react-flow__resize-control.right{cursor:ew-resize}.react-flow__resize-control.bottom,.react-flow__resize-control.top{cursor:ns-resize}.react-flow__resize-control.bottom.right,.react-flow__resize-control.top.left{cursor:nwse-resize}.react-flow__resize-control.bottom.left,.react-flow__resize-control.top.right{cursor:nesw-resize}.react-flow__resize-control.handle{background-color:#3367d9;border:1px solid #fff;border-radius:1px;height:4px;transform:translate(-50%,-50%);width:4px}.react-flow__resize-control.handle.left{left:0;top:50%}.react-flow__resize-control.handle.right{left:100%;top:50%}.react-flow__resize-control.handle.top{left:50%;top:0}.react-flow__resize-control.handle.bottom{left:50%;top:100%}.react-flow__resize-control.handle.bottom.left,.react-flow__resize-control.handle.top.left{left:0}.react-flow__resize-control.handle.bottom.right,.react-flow__resize-control.handle.top.right{left:100%}.react-flow__resize-control.line{border:0 solid #3367d9}.react-flow__resize-control.line.left,.react-flow__resize-control.line.right{height:100%;top:0;transform:translate(-50%);width:1px}.react-flow__resize-control.line.left{border-left-width:1px;left:0}.react-flow__resize-control.line.right{border-right-width:1px;left:100%}.react-flow__resize-control.line.bottom,.react-flow__resize-control.line.top{height:1px;left:0;transform:translateY(-50%);width:100%}.react-flow__resize-control.line.top{border-top-width:1px;top:0}.react-flow__resize-control.line.bottom{border-bottom-width:1px;top:100%}";
 styleInject(css_248z);
 
+/**
+ * Default styles for each node type
+ * Shared between node components and StyleInspector
+ */
+const nodeDefaults = {
+  rectangle: {
+    borderRadius: '3px',
+    padding: '10px',
+    border: '2px solid #1a192b',
+    background: '#fff',
+    minWidth: '100px',
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  diamond: {
+    padding: '20px 30px',
+    border: '2px solid #1a192b',
+    background: '#fff4e6',
+    minWidth: '100px',
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100px',
+    height: '100px'
+  },
+  circle: {
+    borderRadius: '50%',
+    padding: '0',
+    width: '100px',
+    height: '100px',
+    border: '2px solid #1a192b',
+    background: '#e3f2fd',
+    minWidth: '100px',
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+};
+
+const RectangleNode = ({
+  data,
+  selected,
+  style = {}
+}) => {
+  // Get default styles for this node type
+  const defaultStyle = nodeDefaults.rectangle;
+
+  // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
+  const styleOverrides = data.styleOverrides || {};
+  const nodeStyle = {
+    ...defaultStyle,
+    ...styleOverrides
+  };
+  console.log('[RectangleNode] Rendering node:', data.label);
+  console.log('[RectangleNode] style prop (ReactFlow wrapper):', style);
+  console.log('[RectangleNode] data.styleOverrides:', styleOverrides);
+  console.log('[RectangleNode] Final nodeStyle applied to .node-content:', nodeStyle);
+  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -6,
+      left: -6,
+      right: -6,
+      bottom: -6,
+      border: '2px solid #2196F3',
+      borderRadius: '6px',
+      pointerEvents: 'none',
+      zIndex: -1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -4,
+      left: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      bottom: -4,
+      left: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      bottom: -4,
+      right: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
+    onClick: e => {
+      e.stopPropagation();
+      data.onOpenStyleInspector();
+    },
+    style: {
+      position: 'absolute',
+      top: -12,
+      left: -12,
+      width: 24,
+      height: 24,
+      background: '#2196F3',
+      border: '2px solid white',
+      borderRadius: '50%',
+      cursor: 'pointer',
+      pointerEvents: 'auto',
+      zIndex: 10,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '14px',
+      color: 'white',
+      fontWeight: 'bold',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+    },
+    title: "Open Style Inspector"
+  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
+    className: "node-content",
+    style: nodeStyle
+  }, data.label), /*#__PURE__*/React.createElement(Handle$1, {
+    type: "target",
+    position: Position.Top
+  }), /*#__PURE__*/React.createElement(Handle$1, {
+    type: "source",
+    position: Position.Bottom
+  }));
+};
+
+const DiamondNode = ({
+  data,
+  selected,
+  style = {}
+}) => {
+  // Get default styles for this node type
+  const defaultStyle = nodeDefaults.diamond;
+
+  // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
+  const styleOverrides = data.styleOverrides || {};
+  const nodeStyle = {
+    ...defaultStyle,
+    ...styleOverrides
+  };
+  console.log('[DiamondNode] Rendering node:', data.label);
+  console.log('[DiamondNode] style prop (ReactFlow wrapper):', style);
+  console.log('[DiamondNode] data.styleOverrides:', styleOverrides);
+  console.log('[DiamondNode] Merged nodeStyle:', nodeStyle);
+
+  // Extract background and border for SVG
+  const backgroundColor = nodeStyle.background;
+  const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
+  const borderWidth = nodeStyle.border?.split(' ')[0] || '2px';
+  console.log('[DiamondNode] SVG colors - fill:', backgroundColor, 'stroke:', borderColor);
+
+  // Container needs explicit dimensions for SVG to render
+  const containerStyle = {
+    width: style.width || '100px',
+    height: style.height || '100px',
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "node-content",
+    style: containerStyle
+  }, selected && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -6,
+      left: -6,
+      right: -6,
+      bottom: -6,
+      border: '2px solid #2196F3',
+      borderRadius: '6px',
+      pointerEvents: 'none',
+      zIndex: -1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -4,
+      left: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      bottom: -4,
+      left: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      bottom: -4,
+      right: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
+    onClick: e => {
+      e.stopPropagation();
+      console.log('[DiamondNode] Gear button clicked');
+      data.onOpenStyleInspector();
+    },
+    style: {
+      position: 'absolute',
+      top: -12,
+      left: -12,
+      width: 24,
+      height: 24,
+      background: '#2196F3',
+      border: '2px solid white',
+      borderRadius: '50%',
+      cursor: 'pointer',
+      pointerEvents: 'auto',
+      zIndex: 10,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '14px',
+      color: 'white',
+      fontWeight: 'bold',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+    },
+    title: "Open Style Inspector"
+  }, "\u2699"), /*#__PURE__*/React.createElement("svg", {
+    style: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none',
+      zIndex: -1
+    }
+  }, /*#__PURE__*/React.createElement("polygon", {
+    points: "50,0 100,50 50,100 0,50",
+    fill: backgroundColor,
+    stroke: borderColor,
+    strokeWidth: borderWidth,
+    vectorEffect: "non-scaling-stroke"
+  })), data.label, /*#__PURE__*/React.createElement(Handle$1, {
+    type: "target",
+    position: Position.Top
+  }), /*#__PURE__*/React.createElement(Handle$1, {
+    type: "source",
+    position: Position.Bottom
+  }));
+};
+
+const CircleNode = ({
+  data,
+  selected,
+  style = {}
+}) => {
+  // Get default styles for this node type
+  const defaultStyle = nodeDefaults.circle;
+
+  // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
+  const styleOverrides = data.styleOverrides || {};
+  const nodeStyle = {
+    ...defaultStyle,
+    ...styleOverrides
+  };
+  console.log('[CircleNode] Rendering node:', data.label);
+  console.log('[CircleNode] style prop (ReactFlow wrapper):', style);
+  console.log('[CircleNode] data.styleOverrides:', styleOverrides);
+  console.log('[CircleNode] Final nodeStyle applied to .node-content:', nodeStyle);
+  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -6,
+      left: -6,
+      right: -6,
+      bottom: -6,
+      border: '2px solid #2196F3',
+      borderRadius: '50%',
+      pointerEvents: 'none',
+      zIndex: -1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -4,
+      left: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      bottom: -4,
+      left: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      bottom: -4,
+      right: -4,
+      width: 8,
+      height: 8,
+      background: '#2196F3',
+      border: '1px solid white',
+      borderRadius: '2px'
+    }
+  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
+    onClick: e => {
+      e.stopPropagation();
+      data.onOpenStyleInspector();
+    },
+    style: {
+      position: 'absolute',
+      top: -12,
+      left: -12,
+      width: 24,
+      height: 24,
+      background: '#2196F3',
+      border: '2px solid white',
+      borderRadius: '50%',
+      cursor: 'pointer',
+      pointerEvents: 'auto',
+      zIndex: 10,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '14px',
+      color: 'white',
+      fontWeight: 'bold',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+    },
+    title: "Open Style Inspector"
+  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
+    className: "node-content",
+    style: nodeStyle
+  }, data.label), /*#__PURE__*/React.createElement(Handle$1, {
+    type: "target",
+    position: Position.Top
+  }), /*#__PURE__*/React.createElement(Handle$1, {
+    type: "source",
+    position: Position.Bottom
+  }));
+};
+
+const StyleInspector = ({
+  selectedNode,
+  onStyleChange,
+  onCopyStyle,
+  onPasteStyleToChat,
+  onClose
+}) => {
+  const [style, setStyle] = reactExports.useState({
+    background: '#ffffff',
+    borderColor: '#222222',
+    borderWidth: '1',
+    borderRadius: '3',
+    padding: '10',
+    color: '#000000'
+  });
+
+  // Helper to normalize hex color to 6-digit format
+  const normalizeHexColor = color => {
+    if (!color) return '#ffffff';
+    // If it's a 3-digit hex, expand to 6-digit
+    if (color.match(/^#[0-9A-Fa-f]{3}$/)) {
+      return '#' + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
+    }
+    return color;
+  };
+  reactExports.useEffect(() => {
+    if (selectedNode) {
+      // Get default styles for this node type
+      const defaults = nodeDefaults[selectedNode.type] || nodeDefaults.rectangle;
+      const styleOverrides = selectedNode.data?.styleOverrides || {};
+
+      // Merge defaults with styleOverrides (styleOverrides take precedence)
+      const mergedStyle = {
+        ...defaults,
+        ...styleOverrides
+      };
+      console.log('[StyleInspector] Node type:', selectedNode.type);
+      console.log('[StyleInspector] Default style:', defaults);
+      console.log('[StyleInspector] Style overrides:', styleOverrides);
+      console.log('[StyleInspector] Merged style:', mergedStyle);
+      const extractedStyle = {
+        background: normalizeHexColor(mergedStyle.background) || '#ffffff',
+        borderColor: normalizeHexColor(mergedStyle.border?.split(' ')[2]) || '#222222',
+        borderWidth: mergedStyle.border?.split(' ')[0]?.replace('px', '') || '1',
+        borderRadius: mergedStyle.borderRadius?.replace('px', '') || '3',
+        padding: mergedStyle.padding?.replace('px', '') || '10',
+        color: normalizeHexColor(mergedStyle.color) || '#000000'
+      };
+      console.log('[StyleInspector] Extracted style:', extractedStyle);
+      setStyle(extractedStyle);
+    }
+  }, [selectedNode]);
+  const handleChange = (property, value) => {
+    console.log('[StyleInspector] Style change requested:', property, value);
+    const newStyle = {
+      ...style,
+      [property]: value
+    };
+    setStyle(newStyle);
+
+    // Convert to ReactFlow style format
+    const reactFlowStyle = {
+      background: newStyle.background,
+      border: `${newStyle.borderWidth}px solid ${newStyle.borderColor}`,
+      borderRadius: `${newStyle.borderRadius}px`,
+      padding: `${newStyle.padding}px`,
+      color: newStyle.color
+    };
+    console.log('[StyleInspector] Converted to ReactFlow format:', reactFlowStyle);
+    console.log('[StyleInspector] Calling onStyleChange for node:', selectedNode.id);
+    if (onStyleChange) {
+      onStyleChange(selectedNode.id, reactFlowStyle);
+    }
+  };
+  if (!selectedNode) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      width: '140px',
+      background: 'white',
+      border: '1px solid #ddd',
+      borderRadius: '8px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      padding: '16px',
+      zIndex: 1000,
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '16px'
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      fontSize: '16px',
+      fontWeight: 600
+    }
+  }, "Style Inspector"), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      background: 'none',
+      border: 'none',
+      fontSize: '20px',
+      cursor: 'pointer',
+      padding: '0',
+      color: '#666'
+    }
+  }, "\xD7")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: '12px'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      marginBottom: '4px',
+      fontSize: '12px',
+      fontWeight: 500,
+      color: '#666'
+    }
+  }, "Node: ", selectedNode.data.label)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: '12px'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      marginBottom: '4px',
+      fontSize: '12px',
+      fontWeight: 500
+    }
+  }, "Background Color"), /*#__PURE__*/React.createElement("input", {
+    type: "color",
+    value: style.background,
+    onChange: e => handleChange('background', e.target.value),
+    style: {
+      width: '100%',
+      height: '32px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      cursor: 'pointer'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: '12px'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      marginBottom: '4px',
+      fontSize: '12px',
+      fontWeight: 500
+    }
+  }, "Border Color"), /*#__PURE__*/React.createElement("input", {
+    type: "color",
+    value: style.borderColor,
+    onChange: e => handleChange('borderColor', e.target.value),
+    style: {
+      width: '100%',
+      height: '32px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      cursor: 'pointer'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: '12px'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      marginBottom: '4px',
+      fontSize: '12px',
+      fontWeight: 500
+    }
+  }, "Border Width: ", style.borderWidth, "px"), /*#__PURE__*/React.createElement("input", {
+    type: "range",
+    min: "0",
+    max: "10",
+    value: style.borderWidth,
+    onChange: e => handleChange('borderWidth', e.target.value),
+    style: {
+      width: '100%'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: '12px'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      marginBottom: '4px',
+      fontSize: '12px',
+      fontWeight: 500
+    }
+  }, "Border Radius: ", style.borderRadius, "px"), /*#__PURE__*/React.createElement("input", {
+    type: "range",
+    min: "0",
+    max: "30",
+    value: style.borderRadius,
+    onChange: e => handleChange('borderRadius', e.target.value),
+    style: {
+      width: '100%'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: '16px'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      marginBottom: '4px',
+      fontSize: '12px',
+      fontWeight: 500
+    }
+  }, "Padding: ", style.padding, "px"), /*#__PURE__*/React.createElement("input", {
+    type: "range",
+    min: "0",
+    max: "30",
+    value: style.padding,
+    onChange: e => handleChange('padding', e.target.value),
+    style: {
+      width: '100%'
+    }
+  })));
+};
+
+const nodeTypes = {
+  rectangle: RectangleNode,
+  diamond: DiamondNode,
+  circle: CircleNode,
+  default: RectangleNode // Fallback to rectangle
+};
+
+// Custom styles to override ReactFlow's default selection
+const customStyles = `
+  .react-flow__node.selected {
+    box-shadow: none !important;
+  }
+
+  .react-flow__node.selected .react-flow__handle {
+    opacity: 1 !important;
+  }
+`;
 const FlowDiagram = ({
   initialNodes = [],
   initialEdges = [],
   onNodesChange: onNodesChangeProp,
-  onEdgesChange: onEdgesChangeProp
+  onEdgesChange: onEdgesChangeProp,
+  enableStyleInspector = true,
+  onNodeSelected,
+  onStyleChange: onStyleChangeProp,
+  onCopyStyle,
+  onPasteStyleToChat
 }) => {
-  console.log('[FlowDiagram] Received initialNodes:', JSON.stringify(initialNodes, null, 2));
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [isModifierKeyPressed, setIsModifierKeyPressed] = reactExports.useState(false);
-  console.log('[FlowDiagram] Current nodes state:', JSON.stringify(nodes, null, 2));
+  const [selectedNode, setSelectedNode] = reactExports.useState(null);
+  const [showStyleInspector, setShowStyleInspector] = reactExports.useState(false);
+
+  // Clean up nodes when initialNodes changes - remove any appearance styles from node.style
+  reactExports.useEffect(() => {
+    setNodes(nds => nds.map(node => {
+      // If node has any styles in node.style, remove them completely
+      // ReactFlow applies node.style to the wrapper, which we don't want
+      if (node.style && Object.keys(node.style).length > 0) {
+        console.log('[FlowDiagram] Removing wrapper styles from node:', node.id, node.style);
+        const {
+          style,
+          ...nodeWithoutStyle
+        } = node;
+        return nodeWithoutStyle;
+      }
+      return node;
+    }));
+  }, [initialNodes, setNodes]);
 
   // Track CMD (Mac) or CTRL (Windows) key state
   reactExports.useEffect(() => {
@@ -25317,6 +25922,60 @@ const FlowDiagram = ({
     }
   }, eds)), [setEdges]);
 
+  // Handle node selection
+  const handleNodeClick = reactExports.useCallback((event, node) => {
+    console.log('[FlowDiagram] Node clicked:', node.id);
+    setSelectedNode(node);
+    if (onNodeSelected) {
+      onNodeSelected(node, node.style);
+    }
+  }, [onNodeSelected]);
+
+  // Handle pane click (deselect)
+  const handlePaneClick = reactExports.useCallback(() => {
+    setSelectedNode(null);
+    setShowStyleInspector(false);
+  }, []);
+
+  // Handle opening style inspector
+  const handleOpenStyleInspector = reactExports.useCallback(() => {
+    console.log('[FlowDiagram] Opening style inspector');
+    setShowStyleInspector(true);
+  }, []);
+
+  // Handle style change from inspector
+  const handleStyleChange = reactExports.useCallback((nodeId, newStyle) => {
+    console.log('[FlowDiagram] handleStyleChange called for node:', nodeId);
+    console.log('[FlowDiagram] New style object:', newStyle);
+    setNodes(nds => nds.map(node => {
+      if (node.id === nodeId) {
+        console.log('[FlowDiagram] Found node to update:', node.id);
+        console.log('[FlowDiagram] Current node.style:', node.style);
+        console.log('[FlowDiagram] Current node.data.styleOverrides:', node.data?.styleOverrides);
+
+        // Only update data.styleOverrides - never touch node.style
+        // ReactFlow applies node.style to the wrapper, which we don't want
+        const updatedNode = {
+          ...node,
+          data: {
+            ...node.data,
+            styleOverrides: {
+              ...node.data.styleOverrides,
+              ...newStyle
+            }
+          }
+        };
+        console.log('[FlowDiagram] Updated node.style:', updatedNode.style);
+        console.log('[FlowDiagram] Updated node.data.styleOverrides:', updatedNode.data.styleOverrides);
+        return updatedNode;
+      }
+      return node;
+    }));
+    if (onStyleChangeProp) {
+      onStyleChangeProp(nodeId, newStyle);
+    }
+  }, [setNodes, onStyleChangeProp]);
+
   // Wrap the state change handlers to notify parent
   const handleNodesChange = reactExports.useCallback(changes => {
     onNodesChange(changes);
@@ -25330,17 +25989,30 @@ const FlowDiagram = ({
       onEdgesChangeProp(changes);
     }
   }, [onEdgesChange, onEdgesChangeProp]);
+
+  // Add callback to node data for opening style inspector
+  const nodesWithCallback = nodes.map(node => ({
+    ...node,
+    data: {
+      ...node.data,
+      onOpenStyleInspector: handleOpenStyleInspector
+    }
+  }));
   return /*#__PURE__*/React.createElement("div", {
     style: {
       width: '100%',
-      height: '500px'
+      height: '500px',
+      position: 'relative'
     }
-  }, /*#__PURE__*/React.createElement(ReactFlow, {
-    nodes: nodes,
+  }, /*#__PURE__*/React.createElement("style", null, customStyles), /*#__PURE__*/React.createElement(ReactFlow, {
+    nodes: nodesWithCallback,
     edges: edges,
+    nodeTypes: nodeTypes,
     onNodesChange: handleNodesChange,
     onEdgesChange: handleEdgesChange,
     onConnect: onConnect,
+    onNodeClick: handleNodeClick,
+    onPaneClick: handlePaneClick,
     nodesDraggable: true,
     nodesConnectable: true,
     elementsSelectable: true,
@@ -25348,7 +26020,9 @@ const FlowDiagram = ({
     fitViewOptions: {
       padding: 0.2
     },
-    attributionPosition: "bottom-right",
+    proOptions: {
+      hideAttribution: true
+    },
     defaultViewport: {
       x: 0,
       y: 0,
@@ -25359,11 +26033,17 @@ const FlowDiagram = ({
     zoomOnPinch: true,
     panOnDrag: true,
     preventScrolling: isModifierKeyPressed
-  }, /*#__PURE__*/React.createElement(Controls$1, null), /*#__PURE__*/React.createElement(Background$1, {
+  }, /*#__PURE__*/React.createElement(Background$1, {
     variant: "dots",
     gap: 12,
     size: 1
-  })));
+  })), enableStyleInspector && selectedNode && showStyleInspector && /*#__PURE__*/React.createElement(StyleInspector, {
+    selectedNode: selectedNode,
+    onStyleChange: handleStyleChange,
+    onCopyStyle: onCopyStyle,
+    onPasteStyleToChat: onPasteStyleToChat,
+    onClose: () => setShowStyleInspector(false)
+  }));
 };
 
 function commonjsRequire(path) {
@@ -39067,13 +39747,10 @@ class MermaidParser {
    * Parse a single line of mermaid code
    */
   parseLine(line, nodes, edges) {
-    console.log('[MermaidParser] Parsing line:', line);
-
     // Match patterns like: A[Text] --> B{Question}
     // Supports: -->, -->|label|, -.->, -.->|label|
     const connectionPattern = /([A-Za-z0-9_]+)(\[[^\]]+\]|\{[^\}]+\}|\([^\)]+\)|>\([^\)]+\)>)?[\s]*(-->|-.->|==>)(\|[^\|]+\|)?[\s]*([A-Za-z0-9_]+)(\[[^\]]+\]|\{[^\}]+\}|\([^\)]+\)|>\([^\)]+\)>)?/;
     const match = line.match(connectionPattern);
-    console.log('[MermaidParser] Match result:', match);
     if (match) {
       const sourceId = match[1];
       const sourceLabel = match[2];
@@ -39113,42 +39790,27 @@ class MermaidParser {
    */
   createNode(id, labelWithBrackets) {
     let label = id;
-    let type = 'default';
-    let style = {};
+    let type = 'rectangle'; // Default to rectangle node type
+
     if (labelWithBrackets) {
       // Extract label and determine node type based on brackets
       if (labelWithBrackets.startsWith('[')) {
         // Rectangle: [Text]
         label = labelWithBrackets.slice(1, -1);
-        type = 'default';
-        style = {
-          borderRadius: '3px',
-          padding: '10px',
-          border: '2px solid #1a192b',
-          background: '#fff'
-        };
+        type = 'rectangle';
       } else if (labelWithBrackets.startsWith('{')) {
         // Diamond: {Text}
         label = labelWithBrackets.slice(1, -1);
-        type = 'default';
-        style = {
-          borderRadius: '0',
-          padding: '10px 20px',
-          border: '2px solid #1a192b',
-          background: '#fff4e6'
-        };
+        type = 'diamond';
       } else if (labelWithBrackets.startsWith('(')) {
-        // Rounded: (Text)
+        // Circle: (Text)
         label = labelWithBrackets.slice(1, -1);
-        type = 'default';
-        style = {
-          borderRadius: '20px',
-          padding: '10px 20px',
-          border: '2px solid #1a192b',
-          background: '#e3f2fd'
-        };
+        type = 'circle';
       }
     }
+
+    // MermaidParser only converts syntax to ReactFlow config
+    // Node components handle their own styling
     return {
       id,
       type,
@@ -39160,7 +39822,6 @@ class MermaidParser {
         y: 0
       },
       // Will be set by layout algorithm
-      style,
       draggable: true
     };
   }
@@ -39234,13 +39895,11 @@ class MermaidParser {
         // Center the node
         y: nodeWithPosition.y - 25
       };
-      console.log(`[MermaidParser] Node ${node.id} positioned at:`, JSON.stringify(position));
       return {
         ...node,
         position
       };
     });
-    console.log('[MermaidParser] Final layouted nodes:', JSON.stringify(layoutedNodes, null, 2));
     return {
       nodes: layoutedNodes,
       edges
@@ -39278,24 +39937,11 @@ class ReactFlowHandler {
     const wrapper = document.createElement('div');
     wrapper.className = 'tq-draw-reactflow-wrapper';
     wrapper.style.cssText = `
-      margin: 10px 0;
+      margin: 20px;
       padding: 16px;
       background: #f5f5f5;
-      border-radius: 8px;
-      border: 1px solid #ddd;
+      border-radius: 8px;      
     `;
-
-    // Add label
-    const label = document.createElement('div');
-    label.className = 'tq-draw-label';
-    label.textContent = 'Diagram: flowchart';
-    label.style.cssText = `
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 8px;
-      font-family: monospace;
-    `;
-    wrapper.appendChild(label);
 
     // Create container for ReactFlow
     const flowContainer = document.createElement('div');
@@ -39326,28 +39972,22 @@ class ReactFlowHandler {
    */
   renderMermaidDiagram(mermaidCode, container, key, wrapper) {
     try {
-      console.log('[ReactFlowHandler] Rendering mermaid diagram with code:', mermaidCode);
-
       // Parse mermaid syntax to ReactFlow format
       const {
         nodes,
         edges
       } = this.parser.parse(mermaidCode);
-      console.log('[ReactFlowHandler] Parsed nodes:', JSON.stringify(nodes, null, 2));
-      console.log('[ReactFlowHandler] Parsed edges:', JSON.stringify(edges, null, 2));
-      console.log('[ReactFlowHandler] Using ReactFlow (not old mermaid library)');
 
       // Create React root and render
       const root = clientExports.createRoot(container);
       root.render(/*#__PURE__*/React.createElement(FlowDiagram, {
         initialNodes: nodes,
         initialEdges: edges,
-        onNodesChange: changes => {
-          console.log('[ReactFlowHandler] Nodes changed:', changes);
-        },
-        onEdgesChange: changes => {
-          console.log('[ReactFlowHandler] Edges changed:', changes);
-        }
+        enableStyleInspector: this.options.enableStyleInspector,
+        onNodeSelected: this.options.onNodeSelected,
+        onStyleChange: this.options.onStyleChange,
+        onCopyStyle: this.options.onCopyStyle,
+        onPasteStyleToChat: this.options.onPasteStyleToChat
       }));
 
       // Track this diagram
@@ -39390,6 +40030,13 @@ class TrustQueryDraw {
    * Render a mermaid diagram and return a DOM element
    * @param {string} mermaidCode - The mermaid diagram code
    * @param {Object} options - Configuration options
+   * @param {number} options.width - Canvas width (default: 700)
+   * @param {number} options.height - Canvas height (default: 500)
+   * @param {boolean} options.enableStyleInspector - Show style inspector (default: true)
+   * @param {Function} options.onNodeSelected - Callback when node is selected
+   * @param {Function} options.onStyleChange - Callback when style changes
+   * @param {Function} options.onCopyStyle - Callback when copying style
+   * @param {Function} options.onPasteStyleToChat - Callback when pasting style to chat
    * @returns {HTMLElement} The rendered diagram element
    */
   static renderMermaid(mermaidCode, options = {}) {
@@ -39401,6 +40048,11 @@ class TrustQueryDraw {
     const handler = new ReactFlowHandler(container, {
       canvasWidth: options.width || 700,
       canvasHeight: options.height || 500,
+      enableStyleInspector: options.enableStyleInspector !== false,
+      onNodeSelected: options.onNodeSelected,
+      onStyleChange: options.onStyleChange,
+      onCopyStyle: options.onCopyStyle,
+      onPasteStyleToChat: options.onPasteStyleToChat,
       ...options
     });
 
@@ -39486,18 +40138,43 @@ class TrustQueryDraw {
   }
 
   /**
-   * Scan textarea for =mermaid` commands
+   * Scan textarea for =mermaid` commands and ```mermaid markdown blocks
    */
   scan() {
     const text = this.textarea.value;
 
     // Find all =mermaid` commands
     const mermaidCommands = this.findMermaidCommands(text);
+
+    // Find all ```mermaid markdown blocks
+    const markdownBlocks = this.findMarkdownMermaidBlocks(text);
+
+    // Process =mermaid` commands
     mermaidCommands.forEach(({
       code,
       fullMatch
     }) => {
-      console.log('[TrustQueryDraw] Detected mermaid command:', fullMatch);
+      console.log('[TrustQueryDraw] Detected =mermaid command:', fullMatch);
+
+      // Create visualization with Mermaid code
+      this.drawHandler.createVisualization(code, 'mermaid');
+
+      // Trigger callback
+      if (this.options.onDraw) {
+        this.options.onDraw({
+          params: code,
+          fullMatch,
+          type: 'mermaid'
+        });
+      }
+    });
+
+    // Process ```mermaid markdown blocks
+    markdownBlocks.forEach(({
+      code,
+      fullMatch
+    }) => {
+      console.log('[TrustQueryDraw] Detected ```mermaid block:', fullMatch);
 
       // Create visualization with Mermaid code
       this.drawHandler.createVisualization(code, 'mermaid');
@@ -39558,6 +40235,39 @@ class TrustQueryDraw {
       }
     }
     return commands;
+  }
+
+  /**
+   * Find all ```mermaid markdown code blocks in text
+   * @param {string} text - Text to search
+   * @returns {Array} Array of {code, fullMatch} objects
+   */
+  findMarkdownMermaidBlocks(text) {
+    const blocks = [];
+    const pattern = /```mermaid\n/g;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const startIndex = match.index;
+      const codeStart = pattern.lastIndex;
+
+      // Find the closing ```
+      const closingPattern = /\n```/;
+      const remainingText = text.substring(codeStart);
+      const closingMatch = closingPattern.exec(remainingText);
+      if (closingMatch) {
+        const code = remainingText.substring(0, closingMatch.index);
+        const endIndex = codeStart + closingMatch.index + closingMatch[0].length;
+        const fullMatch = text.substring(startIndex, endIndex);
+        blocks.push({
+          code: code.trim(),
+          fullMatch
+        });
+
+        // Move pattern index past this match
+        pattern.lastIndex = endIndex;
+      }
+    }
+    return blocks;
   }
 
   /**

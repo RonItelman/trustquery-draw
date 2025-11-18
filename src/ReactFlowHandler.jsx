@@ -33,25 +33,11 @@ export default class ReactFlowHandler {
     const wrapper = document.createElement('div');
     wrapper.className = 'tq-draw-reactflow-wrapper';
     wrapper.style.cssText = `
-      margin: 10px 0;
+      margin: 20px;
       padding: 16px;
       background: #f5f5f5;
-      border-radius: 8px;
-      border: 1px solid #ddd;
+      border-radius: 8px;      
     `;
-
-    // Add label
-    const label = document.createElement('div');
-    label.className = 'tq-draw-label';
-    label.textContent = 'Diagram: flowchart';
-    label.style.cssText = `
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 8px;
-      font-family: monospace;
-    `;
-
-    wrapper.appendChild(label);
 
     // Create container for ReactFlow
     const flowContainer = document.createElement('div');
@@ -80,14 +66,8 @@ export default class ReactFlowHandler {
    */
   renderMermaidDiagram(mermaidCode, container, key, wrapper) {
     try {
-      console.log('[ReactFlowHandler] Rendering mermaid diagram with code:', mermaidCode);
-
       // Parse mermaid syntax to ReactFlow format
       const { nodes, edges } = this.parser.parse(mermaidCode);
-
-      console.log('[ReactFlowHandler] Parsed nodes:', JSON.stringify(nodes, null, 2));
-      console.log('[ReactFlowHandler] Parsed edges:', JSON.stringify(edges, null, 2));
-      console.log('[ReactFlowHandler] Using ReactFlow (not old mermaid library)');
 
       // Create React root and render
       const root = createRoot(container);
@@ -95,12 +75,11 @@ export default class ReactFlowHandler {
         <FlowDiagram
           initialNodes={nodes}
           initialEdges={edges}
-          onNodesChange={(changes) => {
-            console.log('[ReactFlowHandler] Nodes changed:', changes);
-          }}
-          onEdgesChange={(changes) => {
-            console.log('[ReactFlowHandler] Edges changed:', changes);
-          }}
+          enableStyleInspector={this.options.enableStyleInspector}
+          onNodeSelected={this.options.onNodeSelected}
+          onStyleChange={this.options.onStyleChange}
+          onCopyStyle={this.options.onCopyStyle}
+          onPasteStyleToChat={this.options.onPasteStyleToChat}
         />
       );
 
