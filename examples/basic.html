@@ -32,8 +32,8 @@
     #output-container {
       flex: 1;
       background: #fafafa;
-      overflow-y: auto;
-      overflow-x: hidden;
+      overflow: hidden;
+      position: relative;
     }
 
     #chat-input-wrapper {
@@ -45,22 +45,16 @@
       gap: 8px;
     }
 
-    #button-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
     #textarea {
       width: 100%;
       min-height: 60px;
       max-height: 150px;
       padding: 12px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 16px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      font-size: 16px;            
       resize: none;
+      border: none;
+      outline: none;
     }
 
     button {
@@ -78,6 +72,80 @@
     button:active {
       background: #1565c0;
     }
+
+    #mode-container {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      align-items: flex-start;
+      padding-bottom: 8px;      
+      margin-bottom: 8px;
+    }
+
+    .toggle-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .toggle-item label {
+      font-weight: 600;
+      font-size: 11px;
+      color: #666;
+      cursor: pointer;
+      user-select: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+
+    /* iOS-style toggle switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 42px;
+      height: 25px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #e0e0e0;
+      transition: 0.3s;
+      border-radius: 31px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 21px;
+      width: 21px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #34c759;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(17px);
+    }
   </style>
 </head>
 <body>
@@ -87,26 +155,36 @@
     </div>
 
     <div id="chat-input-wrapper">
-      <div id="button-row">
-        <button id="clear-btn">Clear</button>
-        <button id="example-1-btn">Example 1</button>
-        <button id="example-2-btn">Example 2</button>
-        <button id="example-3-btn">Example 3</button>
+      <div id="mode-container">
+        <div class="toggle-item">
+          <label class="toggle-switch">
+            <input type="checkbox" id="hybrid-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <label for="hybrid-toggle">DIAGRAM</label>
+        </div>
       </div>
 
       <textarea
         id="textarea"
-        placeholder="Type =mermaid`...` or ```mermaid ... ```"></textarea>
+        placeholder="Enable flowchart mode above and start typing..."
+        autofocus></textarea>
     </div>
   </div>
 
   <script type="module">
-    import TrustQueryDraw from '../dist/trustquery-draw.js';
+    import TrustQueryDraw from '../dist/trustquery-diagram.js';
+    import ModeManager from '../src/ModeManager.js';
 
     const textarea = document.getElementById('textarea');
+    const hybridToggle = document.getElementById('hybrid-toggle');
 
-    // Initialize
+    // Declare modeManager variable first
+    let modeManager;
+
+    // Initialize TrustQueryDraw
     const draw = TrustQueryDraw.init('textarea', 'output-container', {
+      mode: () => modeManager ? modeManager.getCurrentMode() : 'off', // Function that returns current mode
       triggerMap: {
         source: 'url',
         url: './tql-draw-triggers.json'
@@ -134,40 +212,17 @@
       }
     });
 
-    // Clear button
-    document.getElementById('clear-btn').addEventListener('click', () => {
-      draw.drawHandler.clearAll();
+    // Initialize mode manager with callback to render empty grid
+    modeManager = new ModeManager(textarea, {
+      onModeChange: (mode) => {
+        console.log('[App] Mode changed to:', mode);
+        // Trigger scan to render empty canvas when mode is activated
+        draw.scan();
+      }
     });
 
-    // Example 1: Basic Flowchart
-    document.getElementById('example-1-btn').addEventListener('click', () => {
-      textarea.value = `=mermaid\`flowchart TD
-  A[Start] --> B{Is it?}
-  B -->|Yes| C[OK]
-  B -->|No| D[End]\``;
-      textarea.dispatchEvent(new Event('input'));
-    });
-
-    // Example 2: Horizontal Flow
-    document.getElementById('example-2-btn').addEventListener('click', () => {
-      textarea.value = `=mermaid\`flowchart LR
-  A[Hard] -->|Text| B(Round)
-  B --> C{Decision}\``;
-      textarea.dispatchEvent(new Event('input'));
-    });
-
-    // Example 3: Markdown Syntax
-    document.getElementById('example-3-btn').addEventListener('click', () => {
-      textarea.value = `\`\`\`mermaid
-flowchart TD
-  Start[Start Process] --> Check{Is Valid?}
-  Check -->|Yes| Process[Process Data]
-  Check -->|No| Error[Show Error]
-  Process --> End[Complete]
-  Error --> End
-\`\`\``;
-      textarea.dispatchEvent(new Event('input'));
-    });
+    // Register toggle
+    modeManager.registerToggle(hybridToggle, 'hybrid');
   </script>
 </body>
 </html>

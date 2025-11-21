@@ -1,10 +1,10 @@
 {
-  "name": "@trustquery/trustquery-draw",
+  "name": "@trustquery/trustquery-diagram",
   "version": "0.1.1",
   "description": "Interactive diagram rendering library - converts Mermaid syntax to draggable ReactFlow diagrams",
   "type": "module",
-  "main": "dist/trustquery-draw.js",
-  "module": "dist/trustquery-draw.js",
+  "main": "dist/trustquery-diagram.js",
+  "module": "dist/trustquery-diagram.js",
   "publishConfig": {
     "access": "public"
   },
@@ -46,10 +46,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RonItelman/trustquery-draw.git"
+    "url": "git+https://github.com/RonItelman/trustquery-diagram.git"
   },
   "dependencies": {
     "dagre": "^0.8.5",
+    "html-to-image": "^1.11.13",
     "mermaid": "^11.12.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

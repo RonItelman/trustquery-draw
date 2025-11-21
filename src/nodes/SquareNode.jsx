@@ -2,11 +2,8 @@ import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { nodeDefaults } from './nodeDefaults.js';
 
-const CircleNode = ({ data, selected, style = {}, id }) => {
-  // Get default styles for this node type
-  const defaultStyle = nodeDefaults.circle;
-
-  // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
+const SquareNode = ({ data, selected, style = {}, id }) => {
+  const defaultStyle = nodeDefaults.square;
   const styleOverrides = data.styleOverrides || {};
   const nodeStyle = { ...defaultStyle, ...styleOverrides };
 
@@ -98,7 +95,6 @@ const CircleNode = ({ data, selected, style = {}, id }) => {
             zIndex: -1,
           }}
         >
-          {/* Corner Handles */}
           <div style={{ position: 'absolute', top: -4, left: -4, width: 8, height: 8, background: '#2196F3', border: '1px solid white', borderRadius: '2px' }} />
           <div style={{ position: 'absolute', top: -4, right: -4, width: 8, height: 8, background: '#2196F3', border: '1px solid white', borderRadius: '2px' }} />
           <div style={{ position: 'absolute', bottom: -4, left: -4, width: 8, height: 8, background: '#2196F3', border: '1px solid white', borderRadius: '2px' }} />
@@ -157,7 +153,7 @@ const CircleNode = ({ data, selected, style = {}, id }) => {
         </div>
       )}
 
-      {/* Node Content - fill container with styles */}
+      {/* Node Content */}
       <div
         className="node-content"
         style={nodeStyle}
@@ -187,11 +183,10 @@ const CircleNode = ({ data, selected, style = {}, id }) => {
         )}
       </div>
 
-      {/* Connection Handles - Input LEFT, Output RIGHT */}
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
     </>
   );
 };
 
-export default CircleNode;
+export default SquareNode;

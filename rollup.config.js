@@ -7,7 +7,7 @@ import postcss from 'rollup-plugin-postcss';
 export default {
   input: 'src/TrustQueryDraw.js',
   output: {
-    file: 'dist/trustquery-draw.js',
+    file: 'dist/trustquery-diagram.js',
     format: 'es',
     sourcemap: true,
     inlineDynamicImports: true

@@ -1,4 +1,6 @@
 import ReactFlowHandler from './ReactFlowHandler.jsx';
+import ShapesParser from './ShapesParser.js';
+import { HybridParser } from './HybridParser.js';
 
 export default class TrustQueryDraw {
   static instances = new Map();
@@ -19,7 +21,7 @@ export default class TrustQueryDraw {
   static renderMermaid(mermaidCode, options = {}) {
     // Create a container for this diagram
     const container = document.createElement('div');
-    container.className = 'tq-draw-mermaid-container';
+    container.className = 'tq-diagram-mermaid-container';
 
     // Create a handler instance
     const handler = new ReactFlowHandler(container, {
@@ -71,7 +73,13 @@ export default class TrustQueryDraw {
     this.options = this.normalizeOptions(options);
 
     this.triggerMap = null;
-    this.drawHandler = new ReactFlowHandler(outputContainer, this.options);
+    this.drawHandler = new ReactFlowHandler(outputContainer, {
+      ...this.options,
+      onClearCanvas: () => this.clearDiagram(),
+    });
+    this.shapesParser = new ShapesParser();
+    this.hybridParser = new HybridParser();
+    this.diagramHistory = []; // Accumulate all diagram content
 
     this.init();
   }
@@ -80,6 +88,9 @@ export default class TrustQueryDraw {
     const triggerMap = options.triggerMap || {};
 
     return {
+      // Mode function (returns 'off', 'mermaid', or 'arrow')
+      mode: options.mode || (() => 'off'),
+
       // Trigger map config
       triggerMapUrl: triggerMap.url || null,
       triggerMapData: triggerMap.data || null,
@@ -104,13 +115,22 @@ export default class TrustQueryDraw {
       this.updateTriggerMap(this.options.triggerMapData);
     }
 
-    // Listen to textarea input
-    this.textarea.addEventListener('input', () => this.scan());
-
-    // Also listen for Enter key (when user "sends" the message)
+    // Listen for Enter key to render (Shift+Enter for newlines)
     this.textarea.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
-        setTimeout(() => this.scan(), 0);
+        e.preventDefault(); // Don't add newline
+
+        // Check if the command is "save"
+        const text = this.textarea.value.trim().toLowerCase();
+        if (text === 'save') {
+          console.log('[TrustQueryDraw] Save command detected - exporting to PNG');
+          this.exportToPNG();
+          this.textarea.value = ''; // Clear input after save
+          return;
+        }
+
+        this.scan();
+        this.textarea.value = ''; // Clear input after rendering
       }
     });
 
@@ -133,135 +153,149 @@ export default class TrustQueryDraw {
   }
 
   /**
-   * Scan textarea for =mermaid` commands and ```mermaid markdown blocks
+   * Scan textarea based on current mode
    */
   scan() {
-    const text = this.textarea.value;
+    const text = this.textarea.value.trim();
+    const mode = this.options.mode();
 
-    // Find all =mermaid` commands
-    const mermaidCommands = this.findMermaidCommands(text);
+    console.log('[TrustQueryDraw] === SCAN START ===');
+    console.log('[TrustQueryDraw] Mode:', mode);
+    console.log('[TrustQueryDraw] Textarea content:', text);
 
-    // Find all ```mermaid markdown blocks
-    const markdownBlocks = this.findMarkdownMermaidBlocks(text);
+    // If mode is OFF, do nothing
+    if (mode === 'off') {
+      console.log('[TrustQueryDraw] Mode is OFF - skipping');
+      return;
+    }
 
-    // Process =mermaid` commands
-    mermaidCommands.forEach(({ code, fullMatch }) => {
-      console.log('[TrustQueryDraw] Detected =mermaid command:', fullMatch);
+    // If text is provided, add it to history
+    if (text) {
+      this.diagramHistory.push(text);
+      console.log('[TrustQueryDraw] Added to history. Total lines:', this.diagramHistory.length);
+    }
 
-      // Create visualization with Mermaid code
-      this.drawHandler.createVisualization(code, 'mermaid');
+    // Get full accumulated content
+    const fullContent = this.diagramHistory.join('\n');
 
-      // Trigger callback
-      if (this.options.onDraw) {
-        this.options.onDraw({ params: code, fullMatch, type: 'mermaid' });
+    // If no accumulated content, render empty canvas with grid
+    if (!fullContent) {
+      console.log('[TrustQueryDraw] No content yet - rendering empty canvas');
+      if (mode === 'arrow' || mode === 'shapes' || mode === 'hybrid') {
+        this.drawHandler.renderNodes([], [], mode);
       }
-    });
+      return;
+    }
 
-    // Process ```mermaid markdown blocks
-    markdownBlocks.forEach(({ code, fullMatch }) => {
-      console.log('[TrustQueryDraw] Detected ```mermaid block:', fullMatch);
+    try {
+      if (mode === 'mermaid') {
+        console.log('[TrustQueryDraw] Processing as MERMAID syntax');
 
-      // Create visualization with Mermaid code
-      this.drawHandler.createVisualization(code, 'mermaid');
+        // Create visualization with Mermaid code
+        this.drawHandler.createVisualization(fullContent, 'mermaid');
 
-      // Trigger callback
-      if (this.options.onDraw) {
-        this.options.onDraw({ params: code, fullMatch, type: 'mermaid' });
+        // Trigger callback
+        if (this.options.onDraw) {
+          this.options.onDraw({ params: fullContent, fullMatch: fullContent, type: 'mermaid' });
+        }
+
+      } else if (mode === 'arrow') {
+        console.log('[TrustQueryDraw] Processing as ARROW syntax');
+
+        // Only process if text contains arrow syntax
+        if (!fullContent.includes('->')) {
+          console.log('[TrustQueryDraw] No arrows found yet, skipping');
+          return;
+        }
+
+        // Create visualization with arrow syntax
+        this.drawHandler.createVisualization(fullContent, 'arrow');
+
+        // Trigger callback
+        if (this.options.onDraw) {
+          this.options.onDraw({ params: fullContent, fullMatch: fullContent, type: 'arrow' });
+        }
+
+      } else if (mode === 'shapes') {
+        console.log('[TrustQueryDraw] Processing as SHAPES mode');
+
+        // Parse the input (works with partial input like "circle" or "circle->diamond")
+        const { nodes, edges } = this.shapesParser.parse(fullContent);
+
+        // Render shapes using the direct node rendering method
+        this.drawHandler.renderNodes(nodes, edges, 'shapes');
+
+        // Trigger callback
+        if (this.options.onDraw) {
+          this.options.onDraw({ params: fullContent, fullMatch: fullContent, type: 'shapes' });
+        }
+
+      } else if (mode === 'hybrid') {
+        console.log('[TrustQueryDraw] Processing as HYBRID mode');
+
+        // Parse the input with hybrid parser
+        const { nodes, edges } = this.hybridParser.getNodesAndEdges(fullContent);
+
+        // Render shapes using the direct node rendering method
+        this.drawHandler.renderNodes(nodes, edges, 'hybrid');
+
+        // Trigger callback
+        if (this.options.onDraw) {
+          this.options.onDraw({ params: fullContent, fullMatch: fullContent, type: 'hybrid' });
+        }
+
+      } else {
+        console.warn('[TrustQueryDraw] Unknown mode:', mode);
       }
-    });
+
+      console.log('[TrustQueryDraw] === SCAN COMPLETE ===');
+
+    } catch (error) {
+      console.error('[TrustQueryDraw] Error during scan:', error);
+
+      // Trigger error callback
+      if (this.options.onError) {
+        this.options.onError(error);
+      }
+    }
   }
 
   /**
-   * Find all =mermaid` commands in text
-   * @param {string} text - Text to search
-   * @returns {Array} Array of {code, fullMatch} objects
+   * Show error message to user
    */
-  findMermaidCommands(text) {
-    const commands = [];
-    const pattern = /=mermaid`/g;
-    let match;
+  showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'tq-diagram-error';
+    errorDiv.style.cssText = `
+      margin: 20px;
+      padding: 16px;
+      background: #ffebee;
+      border: 2px solid #ef5350;
+      border-radius: 8px;
+      color: #c62828;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+    `;
+    errorDiv.innerHTML = `<strong>Error:</strong> ${message}`;
 
-    while ((match = pattern.exec(text)) !== null) {
-      const startIndex = match.index;
-      const codeStart = pattern.lastIndex;
+    this.outputContainer.appendChild(errorDiv);
 
-      // Find the closing backtick
-      let i = codeStart;
-      let escaped = false;
-
-      while (i < text.length) {
-        const char = text[i];
-
-        if (escaped) {
-          escaped = false;
-          i++;
-          continue;
-        }
-
-        if (char === '\\') {
-          escaped = true;
-          i++;
-          continue;
-        }
-
-        if (char === '`') {
-          // Found closing backtick
-          const code = text.substring(codeStart, i);
-          const fullMatch = text.substring(startIndex, i + 1);
-
-          commands.push({
-            code: code.trim(),
-            fullMatch
-          });
-
-          // Move pattern index past this match
-          pattern.lastIndex = i + 1;
-          break;
-        }
-
-        i++;
-      }
-    }
-
-    return commands;
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      errorDiv.remove();
+    }, 5000);
   }
 
   /**
-   * Find all ```mermaid markdown code blocks in text
-   * @param {string} text - Text to search
-   * @returns {Array} Array of {code, fullMatch} objects
+   * Export current diagram to PNG
+   * @param {string} filename - The filename for the downloaded PNG
    */
-  findMarkdownMermaidBlocks(text) {
-    const blocks = [];
-    const pattern = /```mermaid\n/g;
-    let match;
-
-    while ((match = pattern.exec(text)) !== null) {
-      const startIndex = match.index;
-      const codeStart = pattern.lastIndex;
-
-      // Find the closing ```
-      const closingPattern = /\n```/;
-      const remainingText = text.substring(codeStart);
-      const closingMatch = closingPattern.exec(remainingText);
-
-      if (closingMatch) {
-        const code = remainingText.substring(0, closingMatch.index);
-        const endIndex = codeStart + closingMatch.index + closingMatch[0].length;
-        const fullMatch = text.substring(startIndex, endIndex);
-
-        blocks.push({
-          code: code.trim(),
-          fullMatch
-        });
-
-        // Move pattern index past this match
-        pattern.lastIndex = endIndex;
-      }
-    }
-
-    return blocks;
+  exportToPNG(filename = 'diagram.png') {
+    console.log('[TrustQueryDraw] Exporting to PNG...');
+    this.drawHandler.exportToPNG(filename);
   }
+
+
 
   /**
    * Enable/disable the extension
@@ -272,5 +306,17 @@ export default class TrustQueryDraw {
 
   disable() {
     this.enabled = false;
+  }
+
+  /**
+   * Clear diagram history and canvas
+   */
+  clearDiagram() {
+    this.diagramHistory = [];
+    const mode = this.options.mode();
+    if (mode !== 'off') {
+      this.drawHandler.renderNodes([], [], mode);
+    }
+    console.log('[TrustQueryDraw] Diagram cleared');
   }
 }

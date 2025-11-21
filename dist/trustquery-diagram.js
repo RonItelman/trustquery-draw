@@ -26784,6 +26784,16 @@ const StyleInspector = ({
     padding: '10',
     color: '#000000'
   });
+  const [position, setPosition] = reactExports.useState({
+    x: null,
+    y: null
+  });
+  const [isDragging, setIsDragging] = reactExports.useState(false);
+  const dragOffset = reactExports.useRef({
+    x: 0,
+    y: 0
+  });
+  const panelRef = reactExports.useRef(null);
 
   // Helper to normalize hex color to 6-digit format
   const normalizeHexColor = color => {
@@ -26835,33 +26845,86 @@ const StyleInspector = ({
       onStyleChange(selectedNode.id, reactFlowStyle);
     }
   };
+  const handleMouseDown = reactExports.useCallback(e => {
+    setIsDragging(true);
+    const rect = panelRef.current.getBoundingClientRect();
+    dragOffset.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+    e.preventDefault();
+  }, []);
+  const handleMouseMove = reactExports.useCallback(e => {
+    if (!isDragging) return;
+    const parent = panelRef.current.parentElement;
+    const parentRect = parent.getBoundingClientRect();
+    let newX = e.clientX - parentRect.left - dragOffset.current.x;
+    let newY = e.clientY - parentRect.top - dragOffset.current.y;
+
+    // Keep within bounds
+    const panelRect = panelRef.current.getBoundingClientRect();
+    newX = Math.max(0, Math.min(newX, parentRect.width - panelRect.width));
+    newY = Math.max(0, Math.min(newY, parentRect.height - panelRect.height));
+    setPosition({
+      x: newX,
+      y: newY
+    });
+  }, [isDragging]);
+  const handleMouseUp = reactExports.useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Add global mouse listeners when dragging
+  reactExports.useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
   if (!selectedNode) return null;
+  const positionStyle = position.x !== null ? {
+    left: position.x,
+    top: position.y,
+    right: 'auto'
+  } : {
+    right: 10,
+    top: 60
+  };
   return /*#__PURE__*/React.createElement("div", {
+    ref: panelRef,
     style: {
       position: 'absolute',
-      top: 10,
-      right: 10,
+      ...positionStyle,
       width: '140px',
       background: 'white',
       border: '1px solid #ddd',
       borderRadius: '8px',
       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      padding: '16px',
       zIndex: 1000,
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '14px'
+      fontSize: '14px',
+      userSelect: isDragging ? 'none' : 'auto'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '16px'
-    }
+      padding: '12px 16px',
+      borderBottom: '1px solid #e0e0e0',
+      cursor: 'grab',
+      background: '#f5f5f5',
+      borderRadius: '8px 8px 0 0'
+    },
+    onMouseDown: handleMouseDown
   }, /*#__PURE__*/React.createElement("h3", {
     style: {
       margin: 0,
-      fontSize: '16px',
+      fontSize: '13px',
       fontWeight: 600
     }
   }, "Style Inspector"), /*#__PURE__*/React.createElement("button", {
@@ -26872,9 +26935,14 @@ const StyleInspector = ({
       fontSize: '20px',
       cursor: 'pointer',
       padding: '0',
-      color: '#666'
+      color: '#666',
+      lineHeight: 1
     }
   }, "\xD7")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '16px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: '12px'
     }
@@ -26972,7 +27040,7 @@ const StyleInspector = ({
     }
   })), /*#__PURE__*/React.createElement("div", {
     style: {
-      marginBottom: '16px'
+      marginBottom: '12px'
     }
   }, /*#__PURE__*/React.createElement("label", {
     style: {
@@ -26990,12 +27058,13 @@ const StyleInspector = ({
     style: {
       width: '100%'
     }
-  })));
+  }))));
 };
 
 const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
+  onClearCanvas,
   defaultStyles = {
     fillColor: '#ffffff',
     borderColor: '#000000',
@@ -27004,6 +27073,16 @@ const SettingsPanel = ({
 }) => {
   const [isExpanded, setIsExpanded] = reactExports.useState(false);
   const [styles, setStyles] = reactExports.useState(defaultStyles);
+  const [position, setPosition] = reactExports.useState({
+    x: null,
+    y: null
+  });
+  const [isDragging, setIsDragging] = reactExports.useState(false);
+  const dragOffset = reactExports.useRef({
+    x: 0,
+    y: 0
+  });
+  const panelRef = reactExports.useRef(null);
   const handleStyleChange = (key, value) => {
     const newStyles = {
       ...styles,
@@ -27014,43 +27093,118 @@ const SettingsPanel = ({
       onDefaultStyleChange(newStyles);
     }
   };
+  const handleMouseDown = reactExports.useCallback(e => {
+    setIsDragging(true);
+    const rect = panelRef.current.getBoundingClientRect();
+    dragOffset.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      startX: e.clientX,
+      startY: e.clientY,
+      didDrag: false
+    };
+    e.preventDefault();
+  }, []);
+  const handleMouseMove = reactExports.useCallback(e => {
+    if (!isDragging) return;
+
+    // Check if moved more than 5px (to distinguish drag from click)
+    const dx = Math.abs(e.clientX - dragOffset.current.startX);
+    const dy = Math.abs(e.clientY - dragOffset.current.startY);
+    if (dx > 5 || dy > 5) {
+      dragOffset.current.didDrag = true;
+    }
+    const parent = panelRef.current.parentElement;
+    const parentRect = parent.getBoundingClientRect();
+    let newX = e.clientX - parentRect.left - dragOffset.current.x;
+    let newY = e.clientY - parentRect.top - dragOffset.current.y;
+
+    // Keep within bounds
+    const panelRect = panelRef.current.getBoundingClientRect();
+    newX = Math.max(0, Math.min(newX, parentRect.width - panelRect.width));
+    newY = Math.max(0, Math.min(newY, parentRect.height - panelRect.height));
+    setPosition({
+      x: newX,
+      y: newY
+    });
+  }, [isDragging]);
+  const handleMouseUp = reactExports.useCallback(() => {
+    // If collapsed and didn't drag, open the panel
+    if (!isExpanded && !dragOffset.current.didDrag) {
+      setIsExpanded(true);
+    }
+    setIsDragging(false);
+  }, [isExpanded]);
+
+  // Add global mouse listeners when dragging
+  React.useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+  const positionStyle = position.x !== null ? {
+    left: position.x,
+    top: position.y,
+    right: 'auto'
+  } : {
+    right: 12,
+    top: 12
+  };
   return /*#__PURE__*/React.createElement("div", {
+    ref: panelRef,
     style: {
       position: 'absolute',
-      top: 12,
-      right: 12,
+      ...positionStyle,
       zIndex: 1000,
       background: 'white',
       borderRadius: 8,
       boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
       overflow: 'hidden',
-      transition: 'width 0.2s ease',
-      width: isExpanded ? '280px' : '44px'
+      transition: isDragging ? 'none' : 'width 0.2s ease',
+      width: isExpanded ? '280px' : '44px',
+      userSelect: isDragging ? 'none' : 'auto'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: isExpanded ? 'space-between' : 'center',
       padding: '10px 12px',
       borderBottom: isExpanded ? '1px solid #e0e0e0' : 'none',
-      cursor: 'pointer',
+      cursor: 'grab',
       background: '#f5f5f5'
     },
-    onClick: () => setIsExpanded(!isExpanded)
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      transition: 'transform 0.2s',
-      transform: isExpanded ? 'rotate(0deg)' : 'rotate(180deg)'
-    }
-  }, "\u2699\uFE0F"), isExpanded && /*#__PURE__*/React.createElement("div", {
+    onMouseDown: handleMouseDown
+  }, isExpanded ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       fontWeight: 600,
       color: '#333'
     }
-  }, "Settings")), isExpanded && /*#__PURE__*/React.createElement("div", {
+  }, "Settings"), /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      setIsExpanded(false);
+    },
+    style: {
+      background: 'none',
+      border: 'none',
+      fontSize: 18,
+      cursor: 'pointer',
+      padding: 0,
+      color: '#666',
+      lineHeight: 1
+    }
+  }, "\xD7")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20
+    }
+  }, "\u2699\uFE0F")), isExpanded && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '16px 12px'
     }
@@ -27192,12 +27346,25 @@ const SettingsPanel = ({
       cursor: 'pointer',
       fontSize: 13,
       fontWeight: 600,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8
+      marginBottom: 8
     }
-  }, "Export to PNG")));
+  }, "Export to PNG"), /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      if (onClearCanvas) onClearCanvas();
+    },
+    style: {
+      width: '100%',
+      padding: '10px 12px',
+      background: '#f44336',
+      color: 'white',
+      border: 'none',
+      borderRadius: 6,
+      cursor: 'pointer',
+      fontSize: 13,
+      fontWeight: 600
+    }
+  }, "Clear Canvas")));
 };
 
 const nodeTypes = {
@@ -27240,7 +27407,8 @@ const FlowDiagram = ({
   onStyleChange: onStyleChangeProp,
   onCopyStyle,
   onPasteStyleToChat,
-  onExportPNG
+  onExportPNG,
+  onClearCanvas
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -27515,7 +27683,8 @@ const FlowDiagram = ({
   })), enableSettingsPanel && /*#__PURE__*/React.createElement(SettingsPanel, {
     defaultStyles: defaultStyles,
     onDefaultStyleChange: handleDefaultStyleChange,
-    onExportPNG: onExportPNG
+    onExportPNG: onExportPNG,
+    onClearCanvas: onClearCanvas
   }), enableStyleInspector && selectedNode && showStyleInspector && /*#__PURE__*/React.createElement(StyleInspector, {
     selectedNode: selectedNode,
     onStyleChange: handleStyleChange,
@@ -42537,7 +42706,7 @@ class ReactFlowHandler {
     // Create wrapper (full height/width of container)
     console.log('[ReactFlowHandler] ✨ CREATING NEW CARD for type:', type);
     const wrapper = document.createElement('div');
-    wrapper.className = 'tq-draw-reactflow-wrapper';
+    wrapper.className = 'tq-diagram-reactflow-wrapper';
     wrapper.style.cssText = `
       position: absolute;
       top: 0;
@@ -42587,7 +42756,8 @@ class ReactFlowHandler {
         onStyleChange: this.options.onStyleChange,
         onCopyStyle: this.options.onCopyStyle,
         onPasteStyleToChat: this.options.onPasteStyleToChat,
-        onExportPNG: () => this.exportToPNG()
+        onExportPNG: () => this.exportToPNG(),
+        onClearCanvas: this.options.onClearCanvas
       }));
 
       // Track this diagram (only if new)
@@ -42629,7 +42799,8 @@ class ReactFlowHandler {
         onStyleChange: this.options.onStyleChange,
         onCopyStyle: this.options.onCopyStyle,
         onPasteStyleToChat: this.options.onPasteStyleToChat,
-        onExportPNG: () => this.exportToPNG()
+        onExportPNG: () => this.exportToPNG(),
+        onClearCanvas: this.options.onClearCanvas
       }));
 
       // Track this diagram (only if new)
@@ -42670,7 +42841,8 @@ class ReactFlowHandler {
         onStyleChange: this.options.onStyleChange,
         onCopyStyle: this.options.onCopyStyle,
         onPasteStyleToChat: this.options.onPasteStyleToChat,
-        onExportPNG: () => this.exportToPNG()
+        onExportPNG: () => this.exportToPNG(),
+        onClearCanvas: this.options.onClearCanvas
       }));
       return;
     }
@@ -42678,7 +42850,7 @@ class ReactFlowHandler {
     // Create new diagram
     console.log('[ReactFlowHandler] Creating new diagram with nodes');
     const wrapper = document.createElement('div');
-    wrapper.className = 'tq-draw-reactflow-wrapper';
+    wrapper.className = 'tq-diagram-reactflow-wrapper';
     wrapper.style.cssText = `
       position: absolute;
       top: 0;
@@ -42705,7 +42877,8 @@ class ReactFlowHandler {
       onStyleChange: this.options.onStyleChange,
       onCopyStyle: this.options.onCopyStyle,
       onPasteStyleToChat: this.options.onPasteStyleToChat,
-      onExportPNG: () => this.exportToPNG()
+      onExportPNG: () => this.exportToPNG(),
+      onClearCanvas: this.options.onClearCanvas
     }));
     this.diagrams.set(type, {
       wrapper,
@@ -43293,7 +43466,7 @@ class TrustQueryDraw {
   static renderMermaid(mermaidCode, options = {}) {
     // Create a container for this diagram
     const container = document.createElement('div');
-    container.className = 'tq-draw-mermaid-container';
+    container.className = 'tq-diagram-mermaid-container';
 
     // Create a handler instance
     const handler = new ReactFlowHandler(container, {
@@ -43336,9 +43509,14 @@ class TrustQueryDraw {
     this.outputContainer = outputContainer;
     this.options = this.normalizeOptions(options);
     this.triggerMap = null;
-    this.drawHandler = new ReactFlowHandler(outputContainer, this.options);
+    this.drawHandler = new ReactFlowHandler(outputContainer, {
+      ...this.options,
+      onClearCanvas: () => this.clearDiagram()
+    });
     this.shapesParser = new ShapesParser();
     this.hybridParser = new HybridParser();
+    this.diagramHistory = []; // Accumulate all diagram content
+
     this.init();
   }
   normalizeOptions(options) {
@@ -43416,8 +43594,17 @@ class TrustQueryDraw {
       return;
     }
 
-    // If mode is active but no text, render empty canvas with grid
-    if (!text) {
+    // If text is provided, add it to history
+    if (text) {
+      this.diagramHistory.push(text);
+      console.log('[TrustQueryDraw] Added to history. Total lines:', this.diagramHistory.length);
+    }
+
+    // Get full accumulated content
+    const fullContent = this.diagramHistory.join('\n');
+
+    // If no accumulated content, render empty canvas with grid
+    if (!fullContent) {
       console.log('[TrustQueryDraw] No content yet - rendering empty canvas');
       if (mode === 'arrow' || mode === 'shapes' || mode === 'hybrid') {
         this.drawHandler.renderNodes([], [], mode);
@@ -43429,13 +43616,13 @@ class TrustQueryDraw {
         console.log('[TrustQueryDraw] Processing as MERMAID syntax');
 
         // Create visualization with Mermaid code
-        this.drawHandler.createVisualization(text, 'mermaid');
+        this.drawHandler.createVisualization(fullContent, 'mermaid');
 
         // Trigger callback
         if (this.options.onDraw) {
           this.options.onDraw({
-            params: text,
-            fullMatch: text,
+            params: fullContent,
+            fullMatch: fullContent,
             type: 'mermaid'
           });
         }
@@ -43443,19 +43630,19 @@ class TrustQueryDraw {
         console.log('[TrustQueryDraw] Processing as ARROW syntax');
 
         // Only process if text contains arrow syntax
-        if (!text.includes('->')) {
+        if (!fullContent.includes('->')) {
           console.log('[TrustQueryDraw] No arrows found yet, skipping');
           return;
         }
 
         // Create visualization with arrow syntax
-        this.drawHandler.createVisualization(text, 'arrow');
+        this.drawHandler.createVisualization(fullContent, 'arrow');
 
         // Trigger callback
         if (this.options.onDraw) {
           this.options.onDraw({
-            params: text,
-            fullMatch: text,
+            params: fullContent,
+            fullMatch: fullContent,
             type: 'arrow'
           });
         }
@@ -43466,7 +43653,7 @@ class TrustQueryDraw {
         const {
           nodes,
           edges
-        } = this.shapesParser.parse(text);
+        } = this.shapesParser.parse(fullContent);
 
         // Render shapes using the direct node rendering method
         this.drawHandler.renderNodes(nodes, edges, 'shapes');
@@ -43474,8 +43661,8 @@ class TrustQueryDraw {
         // Trigger callback
         if (this.options.onDraw) {
           this.options.onDraw({
-            params: text,
-            fullMatch: text,
+            params: fullContent,
+            fullMatch: fullContent,
             type: 'shapes'
           });
         }
@@ -43486,7 +43673,7 @@ class TrustQueryDraw {
         const {
           nodes,
           edges
-        } = this.hybridParser.getNodesAndEdges(text);
+        } = this.hybridParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
         this.drawHandler.renderNodes(nodes, edges, 'hybrid');
@@ -43494,8 +43681,8 @@ class TrustQueryDraw {
         // Trigger callback
         if (this.options.onDraw) {
           this.options.onDraw({
-            params: text,
-            fullMatch: text,
+            params: fullContent,
+            fullMatch: fullContent,
             type: 'hybrid'
           });
         }
@@ -43518,7 +43705,7 @@ class TrustQueryDraw {
    */
   showError(message) {
     const errorDiv = document.createElement('div');
-    errorDiv.className = 'tq-draw-error';
+    errorDiv.className = 'tq-diagram-error';
     errorDiv.style.cssText = `
       margin: 20px;
       padding: 16px;
@@ -43556,7 +43743,19 @@ class TrustQueryDraw {
   disable() {
     this.enabled = false;
   }
+
+  /**
+   * Clear diagram history and canvas
+   */
+  clearDiagram() {
+    this.diagramHistory = [];
+    const mode = this.options.mode();
+    if (mode !== 'off') {
+      this.drawHandler.renderNodes([], [], mode);
+    }
+    console.log('[TrustQueryDraw] Diagram cleared');
+  }
 }
 
 export { TrustQueryDraw as default };
-//# sourceMappingURL=trustquery-draw.js.map
+//# sourceMappingURL=trustquery-diagram.js.map

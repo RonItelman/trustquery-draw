@@ -12,12 +12,21 @@ import 'reactflow/dist/style.css';
 import RectangleNode from './nodes/RectangleNode.jsx';
 import DiamondNode from './nodes/DiamondNode.jsx';
 import CircleNode from './nodes/CircleNode.jsx';
+import SquareNode from './nodes/SquareNode.jsx';
+import StarNode from './nodes/StarNode.jsx';
+import PentagonNode from './nodes/PentagonNode.jsx';
+import HexagonNode from './nodes/HexagonNode.jsx';
 import StyleInspector from './StyleInspector.jsx';
+import SettingsPanel from './SettingsPanel.jsx';
 
 const nodeTypes = {
   rectangle: RectangleNode,
   diamond: DiamondNode,
   circle: CircleNode,
+  square: SquareNode,
+  star: StarNode,
+  pentagon: PentagonNode,
+  hexagon: HexagonNode,
   default: RectangleNode, // Fallback to rectangle
 };
 
@@ -30,6 +39,14 @@ const customStyles = `
   .react-flow__node.selected .react-flow__handle {
     opacity: 1 !important;
   }
+
+  .tq-flow-space-pan .react-flow__pane {
+    cursor: grab !important;
+  }
+
+  .tq-flow-space-pan .react-flow__pane:active {
+    cursor: grabbing !important;
+  }
 `;
 
 const FlowDiagram = ({
@@ -38,31 +55,104 @@ const FlowDiagram = ({
   onNodesChange: onNodesChangeProp,
   onEdgesChange: onEdgesChangeProp,
   enableStyleInspector = true,
+  enableSettingsPanel = true,
   onNodeSelected,
   onStyleChange: onStyleChangeProp,
   onCopyStyle,
   onPasteStyleToChat,
+  onExportPNG,
+  onClearCanvas,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [isModifierKeyPressed, setIsModifierKeyPressed] = useState(false);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showStyleInspector, setShowStyleInspector] = useState(false);
+  const [defaultStyles, setDefaultStyles] = useState({
+    fillColor: '#ffffff',
+    borderColor: '#000000',
+    borderWidth: 2,
+  });
+  const reactFlowInstance = useRef(null);
 
-  // Clean up nodes when initialNodes changes - remove any appearance styles from node.style
+  // Update nodes when initialNodes changes
   useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        // If node has any styles in node.style, remove them completely
-        // ReactFlow applies node.style to the wrapper, which we don't want
-        if (node.style && Object.keys(node.style).length > 0) {
-          const { style, ...nodeWithoutStyle } = node;
-          return nodeWithoutStyle;
+    setNodes((currentNodes) => {
+      // Create a map of current nodes by ID to preserve user changes (position, style)
+      const currentNodesMap = new Map(currentNodes.map(n => [n.id, n]));
+
+      // Process new nodes
+      const updatedNodes = initialNodes.map((newNode) => {
+        const existingNode = currentNodesMap.get(newNode.id);
+
+        if (existingNode) {
+          // Node exists - preserve position and styleOverrides, update everything else
+          return {
+            ...newNode,
+            position: existingNode.position, // Keep user's position
+            data: {
+              ...newNode.data,
+              styleOverrides: existingNode.data?.styleOverrides || {}, // Keep user's styles
+            },
+          };
+        } else {
+          // New node - apply default styles
+          const { style, ...nodeWithoutStyle } = newNode;
+          return {
+            ...nodeWithoutStyle,
+            data: {
+              ...nodeWithoutStyle.data,
+              styleOverrides: {
+                backgroundColor: defaultStyles.fillColor,
+                borderColor: defaultStyles.borderColor,
+                borderWidth: defaultStyles.borderWidth,
+              },
+            },
+          };
         }
-        return node;
-      })
-    );
-  }, [initialNodes, setNodes]);
+      });
+
+      return updatedNodes;
+    });
+  }, [initialNodes, setNodes, defaultStyles]);
+
+  // Update edges when initialEdges changes
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
+
+  // Log JSON representation whenever nodes or edges change
+  useEffect(() => {
+    if (nodes.length > 0 || edges.length > 0) {
+      const visualization = {
+        nodes: nodes.map(node => ({
+          id: node.id,
+          type: node.type,
+          label: node.data.label,
+          position: node.position,
+          styleOverrides: node.data.styleOverrides,
+        })),
+        edges: edges.map(edge => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label,
+        })),
+      };
+      console.log('[Visualization JSON]', JSON.stringify(visualization, null, 2));
+    }
+  }, [nodes, edges]);
+
+  // Trigger fitView when nodes or edges change
+  useEffect(() => {
+    if (nodes.length > 0 && reactFlowInstance.current) {
+      // Use setTimeout to ensure nodes are rendered before fitting view
+      setTimeout(() => {
+        reactFlowInstance.current.fitView({ padding: 0.2, duration: 200 });
+      }, 50);
+    }
+  }, [nodes, edges]);
 
   // Track CMD (Mac) or CTRL (Windows) key state
   useEffect(() => {
@@ -70,11 +160,23 @@ const FlowDiagram = ({
       if (e.metaKey || e.ctrlKey) {
         setIsModifierKeyPressed(true);
       }
+      // Track spacebar for panning (but not when typing in input/textarea)
+      if (e.code === 'Space' && !e.repeat) {
+        const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+        if (!isTyping) {
+          e.preventDefault(); // Prevent page scroll
+          setIsSpacePressed(true);
+        }
+      }
     };
 
     const handleKeyUp = (e) => {
       if (!e.metaKey && !e.ctrlKey) {
         setIsModifierKeyPressed(false);
+      }
+      // Release spacebar
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
       }
     };
 
@@ -114,8 +216,11 @@ const FlowDiagram = ({
 
   // Handle opening style inspector
   const handleOpenStyleInspector = useCallback(() => {
+    console.log('[FlowDiagram] Opening style inspector');
+    console.log('[FlowDiagram] selectedNode:', selectedNode);
+    console.log('[FlowDiagram] enableStyleInspector:', enableStyleInspector);
     setShowStyleInspector(true);
-  }, []);
+  }, [selectedNode, enableStyleInspector]);
 
   // Handle style change from inspector
   const handleStyleChange = useCallback((nodeId, newStyle) => {
@@ -144,6 +249,30 @@ const FlowDiagram = ({
     }
   }, [setNodes, onStyleChangeProp]);
 
+  // Handle label change from double-click editing
+  const handleLabelChange = useCallback((nodeId, newLabel) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              label: newLabel,
+            },
+          };
+        }
+        return node;
+      })
+    );
+  }, [setNodes]);
+
+  // Handle default style changes from settings panel
+  const handleDefaultStyleChange = useCallback((newStyles) => {
+    console.log('[FlowDiagram] Default styles changed:', newStyles);
+    setDefaultStyles(newStyles);
+  }, []);
+
   // Wrap the state change handlers to notify parent
   const handleNodesChange = useCallback((changes) => {
     onNodesChange(changes);
@@ -159,17 +288,22 @@ const FlowDiagram = ({
     }
   }, [onEdgesChange, onEdgesChangeProp]);
 
-  // Add callback to node data for opening style inspector
+  // Add callbacks to node data for opening style inspector and handling style changes
   const nodesWithCallback = nodes.map(node => ({
     ...node,
     data: {
       ...node.data,
       onOpenStyleInspector: handleOpenStyleInspector,
+      onStyleChange: handleStyleChange,
+      onLabelChange: handleLabelChange,
     },
   }));
 
   return (
-    <div style={{ width: '100%', height: '500px', position: 'relative' }}>
+    <div
+      className={`tq-flow-diagram-wrapper ${isSpacePressed ? 'tq-flow-space-pan' : ''}`}
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+    >
       <style>{customStyles}</style>
       <ReactFlow
         nodes={nodesWithCallback}
@@ -180,11 +314,14 @@ const FlowDiagram = ({
         onConnect={onConnect}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
-        nodesDraggable={true}
+        onInit={(instance) => {
+          reactFlowInstance.current = instance;
+          instance.fitView({ padding: 0.2 });
+        }}
+        nodesDraggable={!isSpacePressed}
         nodesConnectable={true}
-        elementsSelectable={true}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
+        elementsSelectable={!isSpacePressed}
+        noDragClassName="nodrag"
         proOptions={{ hideAttribution: true }}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         zoomOnScroll={isModifierKeyPressed}
@@ -196,6 +333,16 @@ const FlowDiagram = ({
         <Background variant="dots" gap={12} size={1} />
       </ReactFlow>
 
+      {/* Settings Panel */}
+      {enableSettingsPanel && (
+        <SettingsPanel
+          defaultStyles={defaultStyles}
+          onDefaultStyleChange={handleDefaultStyleChange}
+          onExportPNG={onExportPNG}
+          onClearCanvas={onClearCanvas}
+        />
+      )}
+
       {/* Style Inspector Overlay */}
       {enableStyleInspector && selectedNode && showStyleInspector && (
         <StyleInspector
@@ -206,6 +353,9 @@ const FlowDiagram = ({
           onClose={() => setShowStyleInspector(false)}
         />
       )}
+
+      {/* Debug: Show inspector state */}
+      {console.log('[FlowDiagram] Render - enableStyleInspector:', enableStyleInspector, 'selectedNode:', selectedNode?.id, 'showStyleInspector:', showStyleInspector)}
     </div>
   );
 };

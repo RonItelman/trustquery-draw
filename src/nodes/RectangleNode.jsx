@@ -1,14 +1,87 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { nodeDefaults } from './nodeDefaults.js';
 
-const RectangleNode = ({ data, selected, style = {} }) => {
+const RectangleNode = ({ data, selected, style = {}, id }) => {
   // Get default styles for this node type
   const defaultStyle = nodeDefaults.rectangle;
 
   // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
   const styleOverrides = data.styleOverrides || {};
   const nodeStyle = { ...defaultStyle, ...styleOverrides };
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedLabel, setEditedLabel] = useState(data.label);
+
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    setEditedLabel(data.label);
+  };
+
+  const handleLabelChange = (e) => {
+    setEditedLabel(e.target.value);
+  };
+
+  const handleLabelSubmit = () => {
+    if (editedLabel.trim() && data.onLabelChange) {
+      data.onLabelChange(id, editedLabel.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleLabelKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleLabelSubmit();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setEditedLabel(data.label);
+    }
+  };
+
+  const handleResizeStart = (e) => {
+    e.stopPropagation();
+    setIsResizing(true);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = parseFloat(nodeStyle.minWidth) || 100;
+    const startHeight = parseFloat(nodeStyle.minHeight) || 60;
+    const startFontSize = parseFloat(nodeStyle.fontSize) || 12;
+    const aspectRatio = startWidth / startHeight;
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      const delta = Math.max(deltaX, deltaY);
+
+      const newWidth = Math.max(60, startWidth + delta);
+      const newHeight = newWidth / aspectRatio;
+      const scale = newWidth / startWidth;
+      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
+
+      if (data.onStyleChange) {
+        data.onStyleChange(id, {
+          minWidth: `${newWidth}px`,
+          minHeight: `${newHeight}px`,
+          width: `${newWidth}px`,
+          height: `${newHeight}px`,
+          fontSize: `${newFontSize}px`,
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   return (
     <>
@@ -31,7 +104,25 @@ const RectangleNode = ({ data, selected, style = {} }) => {
           <div style={{ position: 'absolute', top: -4, left: -4, width: 8, height: 8, background: '#2196F3', border: '1px solid white', borderRadius: '2px' }} />
           <div style={{ position: 'absolute', top: -4, right: -4, width: 8, height: 8, background: '#2196F3', border: '1px solid white', borderRadius: '2px' }} />
           <div style={{ position: 'absolute', bottom: -4, left: -4, width: 8, height: 8, background: '#2196F3', border: '1px solid white', borderRadius: '2px' }} />
-          <div style={{ position: 'absolute', bottom: -4, right: -4, width: 8, height: 8, background: '#2196F3', border: '1px solid white', borderRadius: '2px' }} />
+          {/* Bottom-right resize handle */}
+          <div
+            className="nodrag"
+            onMouseDown={handleResizeStart}
+            style={{
+              position: 'absolute',
+              bottom: -4,
+              right: -4,
+              width: 10,
+              height: 10,
+              background: '#FF9800',
+              border: '1px solid white',
+              borderRadius: '2px',
+              cursor: 'nwse-resize',
+              pointerEvents: 'auto',
+              zIndex: 20,
+            }}
+            title="Resize"
+          />
         </div>
       )}
 
@@ -40,6 +131,7 @@ const RectangleNode = ({ data, selected, style = {} }) => {
         <div
           onClick={(e) => {
             e.stopPropagation();
+            console.log('[RectangleNode] Gear icon clicked, calling onOpenStyleInspector');
             data.onOpenStyleInspector();
           }}
           style={{
@@ -69,13 +161,38 @@ const RectangleNode = ({ data, selected, style = {} }) => {
       )}
 
       {/* Node Content - fill container with styles */}
-      <div className="node-content" style={nodeStyle}>
-        {data.label}
+      <div
+        className="node-content"
+        style={nodeStyle}
+        onDoubleClick={handleDoubleClick}
+      >
+        {isEditing ? (
+          <input
+            type="text"
+            value={editedLabel}
+            onChange={handleLabelChange}
+            onBlur={handleLabelSubmit}
+            onKeyDown={handleLabelKeyDown}
+            autoFocus
+            style={{
+              background: 'transparent',
+              border: 'none',
+              outline: '2px solid #2196F3',
+              textAlign: 'center',
+              fontSize: nodeStyle.fontSize,
+              width: '100%',
+              padding: '2px',
+            }}
+            className="nodrag"
+          />
+        ) : (
+          data.label
+        )}
       </div>
 
-      {/* Connection Handles */}
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      {/* Connection Handles - Input LEFT, Output RIGHT */}
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
     </>
   );
 };
