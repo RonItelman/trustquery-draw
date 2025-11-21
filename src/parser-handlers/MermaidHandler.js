@@ -9,7 +9,7 @@ import { MarkerType } from 'reactflow';
  *   B -->|Yes| C[OK]
  *   B -->|No| D[End]
  */
-export class MermaidParser {
+export class MermaidHandler {
   constructor() {
     this.nodeCounter = 0;
   }
@@ -222,4 +222,4 @@ export class MermaidParser {
   }
 }
 
-export default MermaidParser;
+export default MermaidHandler;

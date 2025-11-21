@@ -15,7 +15,7 @@ import { MarkerType } from 'reactflow';
  *   3. Diamond shape ONLY if has yes/no or true/false labeled outputs
  *   4. Simple JSON format for debugging
  */
-export class ArrowSyntaxParser {
+export class ArrowHandler {
   constructor() {
     this.nodes = new Map();
     this.edges = [];
@@ -236,4 +236,4 @@ export class ArrowSyntaxParser {
   }
 }
 
-export default ArrowSyntaxParser;
+export default ArrowHandler;

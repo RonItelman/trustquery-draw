@@ -18,6 +18,7 @@ import PentagonNode from './nodes/PentagonNode.jsx';
 import HexagonNode from './nodes/HexagonNode.jsx';
 import StyleInspector from './StyleInspector.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
+import SelfLoopEdge from './edges/SelfLoopEdge.jsx';
 
 const nodeTypes = {
   rectangle: RectangleNode,
@@ -28,6 +29,10 @@ const nodeTypes = {
   pentagon: PentagonNode,
   hexagon: HexagonNode,
   default: RectangleNode, // Fallback to rectangle
+};
+
+const edgeTypes = {
+  selfLoop: SelfLoopEdge,
 };
 
 // Custom styles to override ReactFlow's default selection
@@ -62,6 +67,7 @@ const FlowDiagram = ({
   onPasteStyleToChat,
   onExportPNG,
   onClearCanvas,
+  onSetInput,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -309,6 +315,7 @@ const FlowDiagram = ({
         nodes={nodesWithCallback}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
@@ -340,6 +347,7 @@ const FlowDiagram = ({
           onDefaultStyleChange={handleDefaultStyleChange}
           onExportPNG={onExportPNG}
           onClearCanvas={onClearCanvas}
+          onSetInput={onSetInput}
         />
       )}
 

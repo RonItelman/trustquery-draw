@@ -1,6 +1,5 @@
 import ReactFlowHandler from './ReactFlowHandler.jsx';
-import ShapesParser from './ShapesParser.js';
-import { HybridParser } from './HybridParser.js';
+import { DiagramParser } from './DiagramParser.js';
 
 export default class TrustQueryDraw {
   static instances = new Map();
@@ -76,9 +75,13 @@ export default class TrustQueryDraw {
     this.drawHandler = new ReactFlowHandler(outputContainer, {
       ...this.options,
       onClearCanvas: () => this.clearDiagram(),
+      onSetInput: (text) => {
+        this.textarea.value = text;
+        this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        this.textarea.focus();
+      },
     });
-    this.shapesParser = new ShapesParser();
-    this.hybridParser = new HybridParser();
+    this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
 
     this.init();
@@ -219,8 +222,8 @@ export default class TrustQueryDraw {
       } else if (mode === 'shapes') {
         console.log('[TrustQueryDraw] Processing as SHAPES mode');
 
-        // Parse the input (works with partial input like "circle" or "circle->diamond")
-        const { nodes, edges } = this.shapesParser.parse(fullContent);
+        // Parse the input using DiagramParser
+        const { nodes, edges } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
         this.drawHandler.renderNodes(nodes, edges, 'shapes');
@@ -233,8 +236,8 @@ export default class TrustQueryDraw {
       } else if (mode === 'hybrid') {
         console.log('[TrustQueryDraw] Processing as HYBRID mode');
 
-        // Parse the input with hybrid parser
-        const { nodes, edges } = this.hybridParser.getNodesAndEdges(fullContent);
+        // Parse the input using DiagramParser
+        const { nodes, edges } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
         this.drawHandler.renderNodes(nodes, edges, 'hybrid');

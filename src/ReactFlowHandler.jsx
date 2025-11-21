@@ -1,8 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import FlowDiagram from './FlowDiagram.jsx';
-import MermaidParser from './MermaidParser.js';
-import ArrowSyntaxParser from './ArrowSyntaxParser.js';
+import MermaidHandler from './parser-handlers/MermaidHandler.js';
+import ArrowHandler from './parser-handlers/ArrowHandler.js';
 import { toPng } from 'html-to-image';
 
 /**
@@ -13,8 +13,8 @@ export default class ReactFlowHandler {
     this.outputContainer = outputContainer;
     this.options = options;
     this.diagrams = new Map(); // Track created diagrams by params
-    this.mermaidParser = new MermaidParser();
-    this.arrowParser = new ArrowSyntaxParser();
+    this.mermaidHandler = new MermaidHandler();
+    this.arrowHandler = new ArrowHandler();
   }
 
   /**
@@ -79,7 +79,7 @@ export default class ReactFlowHandler {
   renderArrowDiagram(arrowCode, container, key, wrapper, existingRoot = null) {
     try {
       // Parse arrow syntax to ReactFlow format
-      const { nodes, edges } = this.arrowParser.parse(arrowCode);
+      const { nodes, edges } = this.arrowHandler.parse(arrowCode);
 
       // Reuse existing root or create new one
       const root = existingRoot || createRoot(container);
@@ -94,6 +94,7 @@ export default class ReactFlowHandler {
           onPasteStyleToChat={this.options.onPasteStyleToChat}
           onExportPNG={() => this.exportToPNG()}
           onClearCanvas={this.options.onClearCanvas}
+          onSetInput={this.options.onSetInput}
         />
       );
 
@@ -117,7 +118,7 @@ export default class ReactFlowHandler {
   renderMermaidDiagram(mermaidCode, container, key, wrapper, existingRoot = null) {
     try {
       // Parse mermaid syntax to ReactFlow format
-      const { nodes, edges } = this.mermaidParser.parse(mermaidCode);
+      const { nodes, edges } = this.mermaidHandler.parse(mermaidCode);
 
       // Reuse existing root or create new one
       const root = existingRoot || createRoot(container);
@@ -132,6 +133,7 @@ export default class ReactFlowHandler {
           onPasteStyleToChat={this.options.onPasteStyleToChat}
           onExportPNG={() => this.exportToPNG()}
           onClearCanvas={this.options.onClearCanvas}
+          onSetInput={this.options.onSetInput}
         />
       );
 
@@ -173,6 +175,7 @@ export default class ReactFlowHandler {
           onPasteStyleToChat={this.options.onPasteStyleToChat}
           onExportPNG={() => this.exportToPNG()}
           onClearCanvas={this.options.onClearCanvas}
+          onSetInput={this.options.onSetInput}
         />
       );
       return;
@@ -214,6 +217,7 @@ export default class ReactFlowHandler {
         onPasteStyleToChat={this.options.onPasteStyleToChat}
         onExportPNG={() => this.exportToPNG()}
         onClearCanvas={this.options.onClearCanvas}
+          onSetInput={this.options.onSetInput}
       />
     );
 

@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { nodeDefaults } from './nodeDefaults.js';
+import { useResize } from '../hooks/useResize.js';
 
 const SquareNode = ({ data, selected, style = {}, id }) => {
   const defaultStyle = nodeDefaults.square;
   const styleOverrides = data.styleOverrides || {};
   const nodeStyle = { ...defaultStyle, ...styleOverrides };
 
-  const [isResizing, setIsResizing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedLabel, setEditedLabel] = useState(data.label);
+
+  const { isResizing, handleResizeStart } = useResize({
+    nodeId: id,
+    initialWidth: parseFloat(nodeStyle.minWidth) || 60,
+    initialHeight: parseFloat(nodeStyle.minHeight) || 60,
+    initialFontSize: parseFloat(nodeStyle.fontSize) || 12,
+    minSize: 40,
+    onStyleChange: data.onStyleChange,
+  });
 
   const handleDoubleClick = (e) => {
     e.stopPropagation();
@@ -36,46 +45,6 @@ const SquareNode = ({ data, selected, style = {}, id }) => {
       setIsEditing(false);
       setEditedLabel(data.label);
     }
-  };
-
-  const handleResizeStart = (e) => {
-    e.stopPropagation();
-    setIsResizing(true);
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = parseFloat(nodeStyle.minWidth) || 60;
-    const startHeight = parseFloat(nodeStyle.minHeight) || 60;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 12;
-
-    const handleMouseMove = (moveEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      const delta = Math.max(deltaX, deltaY); // Use larger delta for uniform scaling
-
-      const newSize = Math.max(40, startWidth + delta);
-      const scale = newSize / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
-          minWidth: `${newSize}px`,
-          minHeight: `${newSize}px`,
-          width: `${newSize}px`,
-          height: `${newSize}px`,
-          fontSize: `${newFontSize}px`,
-        });
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
   };
 
   return (

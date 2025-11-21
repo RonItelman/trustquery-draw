@@ -13,7 +13,7 @@ import { MarkerType } from 'reactflow';
  *   - If node label is "circle", "diamond", or "rectangle", use that as the type
  *   - Otherwise, default to rectangle type
  */
-export default class ShapesParser {
+export default class ShapesHandler {
   constructor() {
     this.nodes = new Map();
     this.edges = [];
@@ -122,9 +122,11 @@ export default class ShapesParser {
 
   /**
    * Ensure node exists, with smart shape type detection
+   * Returns the node ID (which may differ from label for duplicate labels)
    */
-  ensureNode(label) {
-    if (!this.nodes.has(label)) {
+  ensureNode(label, forceNew = false) {
+    // If forceNew, always create a new node with unique ID
+    if (forceNew || !this.nodes.has(label)) {
       // Detect shape type from label
       const lowerLabel = label.toLowerCase();
       let type = 'rectangle'; // Default type
@@ -144,14 +146,26 @@ export default class ShapesParser {
         type = shapeMap[lowerLabel];
       }
 
-      this.nodes.set(label, {
-        id: label,
+      // Generate unique ID if label already exists
+      let id = label;
+      if (this.nodes.has(label)) {
+        let counter = 2;
+        while (this.nodes.has(`${label}_${counter}`)) {
+          counter++;
+        }
+        id = `${label}_${counter}`;
+      }
+
+      this.nodes.set(id, {
+        id: id,
         label: label,
         type: type,
       });
 
-      console.log(`[ShapesParser] Created node: ${label} (type: ${type})`);
+      console.log(`[ShapesParser] Created node: ${id} (type: ${type})`);
+      return id;
     }
+    return label;
   }
 
   /**
@@ -166,26 +180,29 @@ export default class ShapesParser {
       draggable: true,
     }));
 
-    const reactFlowEdges = this.edges.map((edge, index) => ({
-      id: `e${edge.from}-${edge.to}-${index}`,
-      source: edge.from,
-      target: edge.to,
-      type: 'smoothstep',
-      animated: false,
-      style: {
-        stroke: '#b1b1b7',
-        strokeWidth: 2,
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: '#b1b1b7',
-      },
-      ...(edge.label && {
-        label: edge.label,
-        labelStyle: { fill: '#000', fontWeight: 500 },
-        labelBgStyle: { fill: '#fff' },
-      }),
-    }));
+    const reactFlowEdges = this.edges.map((edge, index) => {
+      const isSelfLoop = edge.from === edge.to;
+      return {
+        id: `e${edge.from}-${edge.to}-${index}`,
+        source: edge.from,
+        target: edge.to,
+        type: isSelfLoop ? 'selfLoop' : 'smoothstep',
+        animated: false,
+        style: {
+          stroke: '#b1b1b7',
+          strokeWidth: 2,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: '#b1b1b7',
+        },
+        ...(edge.label && {
+          label: edge.label,
+          labelStyle: { fill: '#000', fontWeight: 500 },
+          labelBgStyle: { fill: '#fff' },
+        }),
+      };
+    });
 
     // Apply auto-layout
     const { nodes: layoutedNodes, edges: layoutedEdges } = this.getLayoutedElements(

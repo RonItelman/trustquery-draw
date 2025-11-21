@@ -25572,8 +25572,8 @@ const DiamondNode = ({
 
   // Container needs explicit dimensions for SVG to render
   const containerStyle = {
-    width: style.width || '100px',
-    height: style.height || '100px',
+    width: nodeStyle.width || nodeStyle.minWidth || '100px',
+    height: nodeStyle.height || nodeStyle.minHeight || '100px',
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
@@ -26595,12 +26595,14 @@ const HexagonNode = ({
     e.stopPropagation();
     setIsResizing(true);
     const startX = e.clientX;
-    e.clientY;
+    const startY = e.clientY;
     const startWidth = size;
     const startFontSize = parseFloat(nodeStyle.fontSize) || 11;
     const handleMouseMove = moveEvent => {
       const deltaX = moveEvent.clientX - startX;
-      const newWidth = Math.max(70, startWidth + deltaX);
+      const deltaY = moveEvent.clientY - startY;
+      const delta = Math.max(deltaX, deltaY); // Use larger delta for uniform scaling
+      const newWidth = Math.max(70, startWidth + delta);
       const scale = newWidth / startWidth;
       const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
       if (data.onStyleChange) {
@@ -27065,6 +27067,7 @@ const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
   onClearCanvas,
+  onSetInput,
   defaultStyles = {
     fillColor: '#ffffff',
     borderColor: '#000000',
@@ -27200,11 +27203,13 @@ const SettingsPanel = ({
       color: '#666',
       lineHeight: 1
     }
-  }, "\xD7")) : /*#__PURE__*/React.createElement("div", {
+  }, "\xD7")) : /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined",
     style: {
-      fontSize: 20
+      fontSize: 24,
+      color: '#666'
     }
-  }, "\u2699\uFE0F")), isExpanded && /*#__PURE__*/React.createElement("div", {
+  }, "settings")), isExpanded && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '16px 12px'
     }
@@ -27339,16 +27344,25 @@ const SettingsPanel = ({
     style: {
       width: '100%',
       padding: '10px 12px',
-      background: '#2196F3',
-      color: 'white',
-      border: 'none',
+      background: '#f5f5f5',
+      color: '#333',
+      border: '1px solid #ddd',
       borderRadius: 6,
       cursor: 'pointer',
       fontSize: 13,
       fontWeight: 600,
-      marginBottom: 8
+      marginBottom: 8,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8
     }
-  }, "Export to PNG"), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined",
+    style: {
+      fontSize: 18
+    }
+  }, "download"), "Export to PNG"), /*#__PURE__*/React.createElement("button", {
     onClick: e => {
       e.stopPropagation();
       if (onClearCanvas) onClearCanvas();
@@ -27356,15 +27370,118 @@ const SettingsPanel = ({
     style: {
       width: '100%',
       padding: '10px 12px',
-      background: '#f44336',
-      color: 'white',
-      border: 'none',
+      background: '#f5f5f5',
+      color: '#333',
+      border: '1px solid #ddd',
       borderRadius: 6,
       cursor: 'pointer',
       fontSize: 13,
-      fontWeight: 600
+      fontWeight: 600,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8
     }
-  }, "Clear Canvas")));
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined",
+    style: {
+      fontSize: 18
+    }
+  }, "delete"), "Clear Canvas"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      padding: 12,
+      background: '#f9f9f9',
+      borderRadius: 6,
+      border: '1px solid #eee'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 600,
+      color: '#666',
+      marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5
+    }
+  }, "Examples"), ['square->circle', 'hello-label->world', 'foo(shape:hexagon)->bar(shape:diamond)'].map((example, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    onClick: () => onSetInput && onSetInput(example),
+    style: {
+      fontSize: 11,
+      fontFamily: 'monospace',
+      color: '#1976d2',
+      cursor: 'pointer',
+      padding: '4px 0',
+      lineHeight: 1.4
+    }
+  }, example)))));
+};
+
+const SelfLoopEdge = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  markerEnd,
+  label,
+  labelStyle,
+  labelBgStyle
+}) => {
+  // Elbow-style self-loop path
+  // Goes: right -> up -> left (across top) -> down -> left to target
+  const offset = 20; // How far to extend horizontally
+  const topOffset = 40; // How far above the node
+
+  const topY = sourceY - topOffset;
+
+  // Elbow path with right angles
+  const path = `
+    M ${sourceX} ${sourceY}
+    L ${sourceX + offset} ${sourceY}
+    L ${sourceX + offset} ${topY}
+    L ${targetX - offset} ${topY}
+    L ${targetX - offset} ${targetY}
+    L ${targetX} ${targetY}
+  `;
+  const labelX = (sourceX + targetX) / 2;
+  const labelY = topY - 10;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("path", {
+    id: id,
+    style: {
+      strokeWidth: 1,
+      stroke: '#b1b1b7',
+      fill: 'none',
+      ...style
+    },
+    className: "react-flow__edge-path",
+    d: path,
+    markerEnd: markerEnd
+  }), label && /*#__PURE__*/React.createElement("g", {
+    transform: `translate(${labelX}, ${labelY})`
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: -20,
+    y: -10,
+    width: 40,
+    height: 20,
+    style: {
+      fill: '#fff',
+      ...labelBgStyle
+    }
+  }), /*#__PURE__*/React.createElement("text", {
+    style: {
+      fill: '#000',
+      fontWeight: 500,
+      fontSize: 12,
+      ...labelStyle
+    },
+    textAnchor: "middle",
+    dominantBaseline: "middle"
+  }, label)));
 };
 
 const nodeTypes = {
@@ -27376,6 +27493,9 @@ const nodeTypes = {
   pentagon: PentagonNode,
   hexagon: HexagonNode,
   default: RectangleNode // Fallback to rectangle
+};
+const edgeTypes = {
+  selfLoop: SelfLoopEdge
 };
 
 // Custom styles to override ReactFlow's default selection
@@ -27408,7 +27528,8 @@ const FlowDiagram = ({
   onCopyStyle,
   onPasteStyleToChat,
   onExportPNG,
-  onClearCanvas
+  onClearCanvas,
+  onSetInput
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -27648,6 +27769,7 @@ const FlowDiagram = ({
     nodes: nodesWithCallback,
     edges: edges,
     nodeTypes: nodeTypes,
+    edgeTypes: edgeTypes,
     onNodesChange: handleNodesChange,
     onEdgesChange: handleEdgesChange,
     onConnect: onConnect,
@@ -27684,7 +27806,8 @@ const FlowDiagram = ({
     defaultStyles: defaultStyles,
     onDefaultStyleChange: handleDefaultStyleChange,
     onExportPNG: onExportPNG,
-    onClearCanvas: onClearCanvas
+    onClearCanvas: onClearCanvas,
+    onSetInput: onSetInput
   }), enableStyleInspector && selectedNode && showStyleInspector && /*#__PURE__*/React.createElement(StyleInspector, {
     selectedNode: selectedNode,
     onStyleChange: handleStyleChange,
@@ -41342,7 +41465,7 @@ var dagre = /*@__PURE__*/getDefaultExportFromCjs(dagreExports);
  *   B -->|Yes| C[OK]
  *   B -->|No| D[End]
  */
-class MermaidParser {
+class MermaidHandler {
   constructor() {
     this.nodeCounter = 0;
   }
@@ -41569,7 +41692,7 @@ class MermaidParser {
  *   3. Diamond shape ONLY if has yes/no or true/false labeled outputs
  *   4. Simple JSON format for debugging
  */
-class ArrowSyntaxParser {
+class ArrowHandler {
   constructor() {
     this.nodes = new Map();
     this.edges = [];
@@ -42677,8 +42800,8 @@ class ReactFlowHandler {
     this.outputContainer = outputContainer;
     this.options = options;
     this.diagrams = new Map(); // Track created diagrams by params
-    this.mermaidParser = new MermaidParser();
-    this.arrowParser = new ArrowSyntaxParser();
+    this.mermaidHandler = new MermaidHandler();
+    this.arrowHandler = new ArrowHandler();
   }
 
   /**
@@ -42744,7 +42867,7 @@ class ReactFlowHandler {
       const {
         nodes,
         edges
-      } = this.arrowParser.parse(arrowCode);
+      } = this.arrowHandler.parse(arrowCode);
 
       // Reuse existing root or create new one
       const root = existingRoot || clientExports.createRoot(container);
@@ -42757,7 +42880,8 @@ class ReactFlowHandler {
         onCopyStyle: this.options.onCopyStyle,
         onPasteStyleToChat: this.options.onPasteStyleToChat,
         onExportPNG: () => this.exportToPNG(),
-        onClearCanvas: this.options.onClearCanvas
+        onClearCanvas: this.options.onClearCanvas,
+        onSetInput: this.options.onSetInput
       }));
 
       // Track this diagram (only if new)
@@ -42787,7 +42911,7 @@ class ReactFlowHandler {
       const {
         nodes,
         edges
-      } = this.mermaidParser.parse(mermaidCode);
+      } = this.mermaidHandler.parse(mermaidCode);
 
       // Reuse existing root or create new one
       const root = existingRoot || clientExports.createRoot(container);
@@ -42800,7 +42924,8 @@ class ReactFlowHandler {
         onCopyStyle: this.options.onCopyStyle,
         onPasteStyleToChat: this.options.onPasteStyleToChat,
         onExportPNG: () => this.exportToPNG(),
-        onClearCanvas: this.options.onClearCanvas
+        onClearCanvas: this.options.onClearCanvas,
+        onSetInput: this.options.onSetInput
       }));
 
       // Track this diagram (only if new)
@@ -42842,7 +42967,8 @@ class ReactFlowHandler {
         onCopyStyle: this.options.onCopyStyle,
         onPasteStyleToChat: this.options.onPasteStyleToChat,
         onExportPNG: () => this.exportToPNG(),
-        onClearCanvas: this.options.onClearCanvas
+        onClearCanvas: this.options.onClearCanvas,
+        onSetInput: this.options.onSetInput
       }));
       return;
     }
@@ -42878,7 +43004,8 @@ class ReactFlowHandler {
       onCopyStyle: this.options.onCopyStyle,
       onPasteStyleToChat: this.options.onPasteStyleToChat,
       onExportPNG: () => this.exportToPNG(),
-      onClearCanvas: this.options.onClearCanvas
+      onClearCanvas: this.options.onClearCanvas,
+      onSetInput: this.options.onSetInput
     }));
     this.diagrams.set(type, {
       wrapper,
@@ -42952,248 +43079,7 @@ class ReactFlowHandler {
   }
 }
 
-/**
- * ShapesParser - Parse arrow syntax with automatic shape type detection
- *
- * Syntax (same as arrow syntax):
- *   circle                    - Creates a circle node
- *   circle -> diamond         - Circle connected to diamond
- *   circle -label-> diamond   - Connection with label on arrow
- *
- * Smart shape detection:
- *   - If node label is "circle", "diamond", or "rectangle", use that as the type
- *   - Otherwise, default to rectangle type
- */
-class ShapesParser {
-  constructor() {
-    this.nodes = new Map();
-    this.edges = [];
-  }
-
-  /**
-   * Parse arrow syntax with shape detection
-   * @param {string} input - The input text (can be partial)
-   * @returns {Object} - {nodes, edges}
-   */
-  parse(input) {
-    console.log('[ShapesParser] Starting parse with input:', input);
-    this.nodes.clear();
-    this.edges = [];
-    const trimmed = input.trim();
-    if (!trimmed) {
-      return {
-        nodes: [],
-        edges: []
-      };
-    }
-
-    // Split into lines and process each
-    const lines = trimmed.split('\n');
-    console.log('[ShapesParser] Lines to process:', lines);
-    lines.forEach((line, index) => {
-      line = line.trim();
-      if (!line) return;
-      console.log(`[ShapesParser] Processing line ${index}: "${line}"`);
-
-      // Check if line contains arrow
-      if (!line.includes('->')) {
-        // Just a single node - add it
-        const nodeLabel = line.trim();
-        if (nodeLabel) {
-          this.ensureNode(nodeLabel);
-          console.log(`[ShapesParser] Added standalone node: ${nodeLabel}`);
-        }
-        return;
-      }
-
-      // Split by arrows and process as a chain: A -> B -> C
-      const segments = line.split('->').map(s => s.trim());
-      console.log(`[ShapesParser] Segments:`, segments);
-
-      // Process each segment and create edges between consecutive nodes
-      for (let i = 0; i < segments.length; i++) {
-        let segment = segments[i];
-        if (!segment) continue;
-        let nodeLabel = segment;
-        let edgeLabel = null;
-
-        // Check if this segment has a label for the NEXT edge: "A -label" or "A-label"
-        // Try with space first, then without
-        let labelMatch = segment.match(/^(.+?)\s+-(\w+)$/);
-        if (!labelMatch) {
-          // Try without space, but only if the part before dash is a shape keyword
-          labelMatch = segment.match(/^(\w+)-(\w+)$/);
-          if (labelMatch) {
-            const possibleShape = labelMatch[1].toLowerCase();
-            const shapeKeywords = ['circle', 'square', 'rectangle', 'diamond', 'star', 'pentagon', 'hexagon'];
-            // Only treat as shape+label if the first part is a shape keyword
-            if (shapeKeywords.includes(possibleShape)) {
-              nodeLabel = labelMatch[1].trim();
-              edgeLabel = labelMatch[2].trim();
-              console.log(`[ShapesParser] Found edge label (no space): "${edgeLabel}"`);
-            }
-          }
-        } else {
-          nodeLabel = labelMatch[1].trim();
-          edgeLabel = labelMatch[2].trim();
-          console.log(`[ShapesParser] Found edge label (with space): "${edgeLabel}"`);
-        }
-
-        // Create the node
-        if (nodeLabel) {
-          this.ensureNode(nodeLabel);
-        }
-
-        // Create edge to next node if exists
-        if (i < segments.length - 1 && nodeLabel && segments[i + 1]) {
-          const nextSegment = segments[i + 1].trim();
-          // Extract next node label (might have its own edge label)
-          let nextLabelMatch = nextSegment.match(/^(.+?)\s+-(\w+)$/);
-          if (!nextLabelMatch) {
-            nextLabelMatch = nextSegment.match(/^(\w+)-(\w+)$/);
-          }
-          const nextNodeLabel = nextLabelMatch ? nextLabelMatch[1].trim() : nextSegment;
-          if (nextNodeLabel) {
-            console.log(`[ShapesParser] Creating edge: ${nodeLabel} -${edgeLabel || ''}-> ${nextNodeLabel}`);
-            this.edges.push({
-              from: nodeLabel,
-              to: nextNodeLabel,
-              label: edgeLabel
-            });
-          }
-        }
-      }
-    });
-
-    // Convert to ReactFlow format
-    return this.toReactFlow();
-  }
-
-  /**
-   * Ensure node exists, with smart shape type detection
-   */
-  ensureNode(label) {
-    if (!this.nodes.has(label)) {
-      // Detect shape type from label
-      const lowerLabel = label.toLowerCase();
-      let type = 'rectangle'; // Default type
-
-      // Map label to shape type
-      const shapeMap = {
-        'circle': 'circle',
-        'square': 'square',
-        'rectangle': 'rectangle',
-        'diamond': 'diamond',
-        'star': 'star',
-        'pentagon': 'pentagon',
-        'hexagon': 'hexagon'
-      };
-      if (shapeMap[lowerLabel]) {
-        type = shapeMap[lowerLabel];
-      }
-      this.nodes.set(label, {
-        id: label,
-        label: label,
-        type: type
-      });
-      console.log(`[ShapesParser] Created node: ${label} (type: ${type})`);
-    }
-  }
-
-  /**
-   * Convert to ReactFlow format with auto-layout
-   */
-  toReactFlow() {
-    const reactFlowNodes = Array.from(this.nodes.values()).map(node => ({
-      id: node.id,
-      type: node.type,
-      data: {
-        label: node.label
-      },
-      position: {
-        x: 0,
-        y: 0
-      },
-      draggable: true
-    }));
-    const reactFlowEdges = this.edges.map((edge, index) => ({
-      id: `e${edge.from}-${edge.to}-${index}`,
-      source: edge.from,
-      target: edge.to,
-      type: 'smoothstep',
-      animated: false,
-      style: {
-        stroke: '#b1b1b7',
-        strokeWidth: 2
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: '#b1b1b7'
-      },
-      ...(edge.label && {
-        label: edge.label,
-        labelStyle: {
-          fill: '#000',
-          fontWeight: 500
-        },
-        labelBgStyle: {
-          fill: '#fff'
-        }
-      })
-    }));
-
-    // Apply auto-layout
-    const {
-      nodes: layoutedNodes,
-      edges: layoutedEdges
-    } = this.getLayoutedElements(reactFlowNodes, reactFlowEdges, 'LR');
-    return {
-      nodes: layoutedNodes,
-      edges: layoutedEdges
-    };
-  }
-
-  /**
-   * Apply Dagre layout algorithm
-   */
-  getLayoutedElements(nodes, edges, direction = 'LR') {
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({
-      rankdir: direction,
-      nodesep: 60,
-      // Reduced spacing between nodes
-      ranksep: 80 // Reduced spacing between ranks
-    });
-    nodes.forEach(node => {
-      dagreGraph.setNode(node.id, {
-        width: 70,
-        height: 70
-      }); // Match actual node size
-    });
-    edges.forEach(edge => {
-      dagreGraph.setEdge(edge.source, edge.target);
-    });
-    dagre.layout(dagreGraph);
-    const layoutedNodes = nodes.map(node => {
-      const nodeWithPosition = dagreGraph.node(node.id);
-      return {
-        ...node,
-        position: {
-          x: nodeWithPosition.x - 35,
-          // Center the node (half of width)
-          y: nodeWithPosition.y - 35 // Center the node (half of height)
-        }
-      };
-    });
-    return {
-      nodes: layoutedNodes,
-      edges
-    };
-  }
-}
-
-class HybridParser {
+class DiagramParser {
   constructor() {
     this.nodes = new Map(); // Map of label -> node
     this.edges = [];
@@ -43211,22 +43097,22 @@ class HybridParser {
     };
   }
   parse(input) {
-    console.log('[HybridParser] Starting parse with input:', input);
+    console.log('[DiagramParser] Starting parse with input:', input);
     this.nodes.clear();
     this.edges = [];
     this.nodeOrder = []; // Reset node order tracking
 
     const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    console.log('[HybridParser] Lines to process:', lines);
+    console.log('[DiagramParser] Lines to process:', lines);
     lines.forEach((line, index) => {
-      console.log(`[HybridParser] Processing line ${index}: "${line}"`);
+      console.log(`[DiagramParser] Processing line ${index}: "${line}"`);
       this.parseLine(line);
     });
     const result = {
       nodes: Array.from(this.nodes.values()),
       edges: this.edges
     };
-    console.log('[HybridParser] Parse complete:', result);
+    console.log('[DiagramParser] Parse complete:', result);
     return result;
   }
   parseLine(line) {
@@ -43236,7 +43122,7 @@ class HybridParser {
     } else {
       // Single node - create it
       this.ensureNode(line);
-      console.log(`[HybridParser] Added standalone node: ${line}`);
+      console.log(`[DiagramParser] Added standalone node: ${line}`);
     }
   }
   parseArrowLine(line) {
@@ -43304,77 +43190,98 @@ class HybridParser {
       lastIndex = arrow.index + arrow.length;
     });
 
-    // Create nodes
-    nodes.forEach(label => {
-      this.ensureNode(label);
-    });
+    // Create nodes and get their clean names
+    const nodeNames = nodes.map(label => this.ensureNode(label));
 
     // Create edges based on arrow directions
     for (let i = 0; i < arrows.length; i++) {
       const arrow = arrows[i];
-      const sourceLabel = nodes[i];
-      const targetLabel = nodes[i + 1];
-      if (!sourceLabel || !targetLabel) continue;
+      const sourceName = nodeNames[i];
+      const targetName = nodeNames[i + 1];
+      if (!sourceName || !targetName) continue;
       if (arrow.direction === 'forward') {
         // source -> target
         this.edges.push({
-          id: `${sourceLabel}-${targetLabel}-${this.edges.length}`,
-          source: sourceLabel,
-          target: targetLabel,
+          id: `${sourceName}-${targetName}-${this.edges.length}`,
+          source: sourceName,
+          target: targetName,
           label: arrow.edgeLabel
         });
-        console.log(`[HybridParser] Created edge: ${sourceLabel} -> ${targetLabel}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+        console.log(`[DiagramParser] Created edge: ${sourceName} -> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       } else if (arrow.direction === 'backward') {
         // target <- source (swap them)
-        // Edge goes from "that" (right) to "this" (left)
-        // Uses default positions: output from right side, input to left side
         this.edges.push({
-          id: `${targetLabel}-${sourceLabel}-${this.edges.length}`,
-          source: targetLabel,
-          target: sourceLabel,
+          id: `${targetName}-${sourceName}-${this.edges.length}`,
+          source: targetName,
+          target: sourceName,
           label: arrow.edgeLabel
         });
-        console.log(`[HybridParser] Created edge: ${targetLabel} <- ${sourceLabel}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+        console.log(`[DiagramParser] Created edge: ${targetName} <- ${sourceName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       } else if (arrow.direction === 'bidirectional') {
         // source <-> target (create both edges)
         this.edges.push({
-          id: `${sourceLabel}-${targetLabel}-${this.edges.length}`,
-          source: sourceLabel,
-          target: targetLabel,
+          id: `${sourceName}-${targetName}-${this.edges.length}`,
+          source: sourceName,
+          target: targetName,
           label: arrow.edgeLabel
         });
         this.edges.push({
-          id: `${targetLabel}-${sourceLabel}-${this.edges.length}`,
-          source: targetLabel,
-          target: sourceLabel,
+          id: `${targetName}-${sourceName}-${this.edges.length}`,
+          source: targetName,
+          target: sourceName,
           label: arrow.edgeLabel
         });
-        console.log(`[HybridParser] Created bidirectional edge: ${sourceLabel} <-> ${targetLabel}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+        console.log(`[DiagramParser] Created bidirectional edge: ${sourceName} <-> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       }
     }
   }
-  ensureNode(label) {
-    const trimmedLabel = label.trim();
-    if (!this.nodes.has(trimmedLabel)) {
-      // Determine node type based on label
-      const lowerLabel = trimmedLabel.toLowerCase();
-      let type = 'rectangle'; // Default type
 
-      // Check if label matches a shape keyword
-      if (this.shapeKeywords[lowerLabel]) {
-        type = this.shapeKeywords[lowerLabel];
-      }
+  /**
+   * Parse node label, extracting shape type if specified
+   * Supports: "foo(shape:circle)" -> {name: "foo", type: "circle"}
+   */
+  parseNodeLabel(label) {
+    const trimmed = label.trim();
+
+    // Match pattern: name(shape:type)
+    const match = trimmed.match(/^(.+?)\(shape:\s*(\w+)\)$/i);
+    if (match) {
+      const name = match[1].trim();
+      const shapeType = match[2].toLowerCase();
+      // Validate shape type
+      const type = this.shapeKeywords[shapeType] || 'rectangle';
+      return {
+        name,
+        type
+      };
+    }
+
+    // No explicit shape, use label-based detection
+    const lowerLabel = trimmed.toLowerCase();
+    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
+    return {
+      name: trimmed,
+      type
+    };
+  }
+  ensureNode(label) {
+    const {
+      name,
+      type
+    } = this.parseNodeLabel(label);
+    if (!this.nodes.has(name)) {
       const node = {
-        id: trimmedLabel,
-        label: trimmedLabel,
+        id: name,
+        label: name,
         type: type
       };
-      this.nodes.set(trimmedLabel, node);
-      this.nodeOrder.push(trimmedLabel); // Track order of appearance
-      console.log(`[HybridParser] Created node: ${trimmedLabel} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
+      this.nodes.set(name, node);
+      this.nodeOrder.push(name); // Track order of appearance
+      console.log(`[DiagramParser] Created node: ${name} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
     } else {
-      console.log(`[HybridParser] Node already exists: ${trimmedLabel}`);
+      console.log(`[DiagramParser] Node already exists: ${name}`);
     }
+    return name; // Return the node ID for edge creation
   }
   layoutGraph(nodes, edges) {
     // Position nodes based on their appearance order in the input
@@ -43434,7 +43341,7 @@ class HybridParser {
       source: edge.source,
       target: edge.target,
       label: edge.label,
-      type: 'smoothstep',
+      type: edge.source === edge.target ? 'selfLoop' : 'smoothstep',
       animated: false,
       markerEnd: {
         type: MarkerType.ArrowClosed
@@ -43511,10 +43418,16 @@ class TrustQueryDraw {
     this.triggerMap = null;
     this.drawHandler = new ReactFlowHandler(outputContainer, {
       ...this.options,
-      onClearCanvas: () => this.clearDiagram()
+      onClearCanvas: () => this.clearDiagram(),
+      onSetInput: text => {
+        this.textarea.value = text;
+        this.textarea.dispatchEvent(new Event('input', {
+          bubbles: true
+        }));
+        this.textarea.focus();
+      }
     });
-    this.shapesParser = new ShapesParser();
-    this.hybridParser = new HybridParser();
+    this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
 
     this.init();
@@ -43649,11 +43562,11 @@ class TrustQueryDraw {
       } else if (mode === 'shapes') {
         console.log('[TrustQueryDraw] Processing as SHAPES mode');
 
-        // Parse the input (works with partial input like "circle" or "circle->diamond")
+        // Parse the input using DiagramParser
         const {
           nodes,
           edges
-        } = this.shapesParser.parse(fullContent);
+        } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
         this.drawHandler.renderNodes(nodes, edges, 'shapes');
@@ -43669,11 +43582,11 @@ class TrustQueryDraw {
       } else if (mode === 'hybrid') {
         console.log('[TrustQueryDraw] Processing as HYBRID mode');
 
-        // Parse the input with hybrid parser
+        // Parse the input using DiagramParser
         const {
           nodes,
           edges
-        } = this.hybridParser.getNodesAndEdges(fullContent);
+        } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
         this.drawHandler.renderNodes(nodes, edges, 'hybrid');

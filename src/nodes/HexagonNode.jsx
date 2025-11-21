@@ -55,7 +55,9 @@ const HexagonNode = ({ data, selected, style = {}, id }) => {
 
     const handleMouseMove = (moveEvent) => {
       const deltaX = moveEvent.clientX - startX;
-      const newWidth = Math.max(70, startWidth + deltaX);
+      const deltaY = moveEvent.clientY - startY;
+      const delta = Math.max(deltaX, deltaY); // Use larger delta for uniform scaling
+      const newWidth = Math.max(70, startWidth + delta);
       const scale = newWidth / startWidth;
       const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
 

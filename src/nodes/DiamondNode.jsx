@@ -88,8 +88,8 @@ const DiamondNode = ({ data, selected, style = {}, id }) => {
 
   // Container needs explicit dimensions for SVG to render
   const containerStyle = {
-    width: style.width || '100px',
-    height: style.height || '100px',
+    width: nodeStyle.width || nodeStyle.minWidth || '100px',
+    height: nodeStyle.height || nodeStyle.minHeight || '100px',
     position: 'relative',
     display: 'flex',
     alignItems: 'center',

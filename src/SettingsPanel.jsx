@@ -4,6 +4,7 @@ const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
   onClearCanvas,
+  onSetInput,
   defaultStyles = {
     fillColor: '#ffffff',
     borderColor: '#000000',
@@ -141,7 +142,7 @@ const SettingsPanel = ({
             >×</button>
           </>
         ) : (
-          <div style={{ fontSize: 20 }}>⚙️</div>
+          <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#666' }}>settings</span>
         )}
       </div>
 
@@ -275,16 +276,21 @@ const SettingsPanel = ({
             style={{
               width: '100%',
               padding: '10px 12px',
-              background: '#2196F3',
-              color: 'white',
-              border: 'none',
+              background: '#f5f5f5',
+              color: '#333',
+              border: '1px solid #ddd',
               borderRadius: 6,
               cursor: 'pointer',
               fontSize: 13,
               fontWeight: 600,
               marginBottom: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
             Export to PNG
           </button>
 
@@ -297,17 +303,60 @@ const SettingsPanel = ({
             style={{
               width: '100%',
               padding: '10px 12px',
-              background: '#f44336',
-              color: 'white',
-              border: 'none',
+              background: '#f5f5f5',
+              color: '#333',
+              border: '1px solid #ddd',
               borderRadius: 6,
               cursor: 'pointer',
               fontSize: 13,
               fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
             Clear Canvas
           </button>
+
+          {/* Help Examples */}
+          <div style={{
+            marginTop: 16,
+            padding: 12,
+            background: '#f9f9f9',
+            borderRadius: 6,
+            border: '1px solid #eee',
+          }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#666',
+              marginBottom: 8,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}>Examples</div>
+            {[
+              'square->circle',
+              'hello-label->world',
+              'foo(shape:hexagon)->bar(shape:diamond)',
+            ].map((example, i) => (
+              <div
+                key={i}
+                onClick={() => onSetInput && onSetInput(example)}
+                style={{
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: '#1976d2',
+                  cursor: 'pointer',
+                  padding: '4px 0',
+                  lineHeight: 1.4,
+                }}
+              >
+                {example}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

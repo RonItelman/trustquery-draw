@@ -1,7 +1,7 @@
 import dagre from 'dagre';
 import { MarkerType } from 'reactflow';
 
-export class HybridParser {
+export class DiagramParser {
   constructor() {
     this.nodes = new Map(); // Map of label -> node
     this.edges = [];
@@ -20,17 +20,17 @@ export class HybridParser {
   }
 
   parse(input) {
-    console.log('[HybridParser] Starting parse with input:', input);
+    console.log('[DiagramParser] Starting parse with input:', input);
 
     this.nodes.clear();
     this.edges = [];
     this.nodeOrder = []; // Reset node order tracking
 
     const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    console.log('[HybridParser] Lines to process:', lines);
+    console.log('[DiagramParser] Lines to process:', lines);
 
     lines.forEach((line, index) => {
-      console.log(`[HybridParser] Processing line ${index}: "${line}"`);
+      console.log(`[DiagramParser] Processing line ${index}: "${line}"`);
       this.parseLine(line);
     });
 
@@ -39,7 +39,7 @@ export class HybridParser {
       edges: this.edges,
     };
 
-    console.log('[HybridParser] Parse complete:', result);
+    console.log('[DiagramParser] Parse complete:', result);
     return result;
   }
 
@@ -50,7 +50,7 @@ export class HybridParser {
     } else {
       // Single node - create it
       this.ensureNode(line);
-      console.log(`[HybridParser] Added standalone node: ${line}`);
+      console.log(`[DiagramParser] Added standalone node: ${line}`);
     }
   }
 
@@ -124,85 +124,98 @@ export class HybridParser {
       lastIndex = arrow.index + arrow.length;
     });
 
-    // Create nodes
-    nodes.forEach(label => {
-      this.ensureNode(label);
-    });
+    // Create nodes and get their clean names
+    const nodeNames = nodes.map(label => this.ensureNode(label));
 
     // Create edges based on arrow directions
     for (let i = 0; i < arrows.length; i++) {
       const arrow = arrows[i];
-      const sourceLabel = nodes[i];
-      const targetLabel = nodes[i + 1];
+      const sourceName = nodeNames[i];
+      const targetName = nodeNames[i + 1];
 
-      if (!sourceLabel || !targetLabel) continue;
+      if (!sourceName || !targetName) continue;
 
       if (arrow.direction === 'forward') {
         // source -> target
         this.edges.push({
-          id: `${sourceLabel}-${targetLabel}-${this.edges.length}`,
-          source: sourceLabel,
-          target: targetLabel,
+          id: `${sourceName}-${targetName}-${this.edges.length}`,
+          source: sourceName,
+          target: targetName,
           label: arrow.edgeLabel,
         });
-        console.log(`[HybridParser] Created edge: ${sourceLabel} -> ${targetLabel}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+        console.log(`[DiagramParser] Created edge: ${sourceName} -> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
 
       } else if (arrow.direction === 'backward') {
         // target <- source (swap them)
-        // Edge goes from "that" (right) to "this" (left)
-        // Uses default positions: output from right side, input to left side
         this.edges.push({
-          id: `${targetLabel}-${sourceLabel}-${this.edges.length}`,
-          source: targetLabel,
-          target: sourceLabel,
+          id: `${targetName}-${sourceName}-${this.edges.length}`,
+          source: targetName,
+          target: sourceName,
           label: arrow.edgeLabel,
         });
-        console.log(`[HybridParser] Created edge: ${targetLabel} <- ${sourceLabel}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+        console.log(`[DiagramParser] Created edge: ${targetName} <- ${sourceName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
 
       } else if (arrow.direction === 'bidirectional') {
         // source <-> target (create both edges)
         this.edges.push({
-          id: `${sourceLabel}-${targetLabel}-${this.edges.length}`,
-          source: sourceLabel,
-          target: targetLabel,
+          id: `${sourceName}-${targetName}-${this.edges.length}`,
+          source: sourceName,
+          target: targetName,
           label: arrow.edgeLabel,
         });
         this.edges.push({
-          id: `${targetLabel}-${sourceLabel}-${this.edges.length}`,
-          source: targetLabel,
-          target: sourceLabel,
+          id: `${targetName}-${sourceName}-${this.edges.length}`,
+          source: targetName,
+          target: sourceName,
           label: arrow.edgeLabel,
         });
-        console.log(`[HybridParser] Created bidirectional edge: ${sourceLabel} <-> ${targetLabel}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+        console.log(`[DiagramParser] Created bidirectional edge: ${sourceName} <-> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       }
     }
   }
 
+  /**
+   * Parse node label, extracting shape type if specified
+   * Supports: "foo(shape:circle)" -> {name: "foo", type: "circle"}
+   */
+  parseNodeLabel(label) {
+    const trimmed = label.trim();
+
+    // Match pattern: name(shape:type)
+    const match = trimmed.match(/^(.+?)\(shape:\s*(\w+)\)$/i);
+
+    if (match) {
+      const name = match[1].trim();
+      const shapeType = match[2].toLowerCase();
+      // Validate shape type
+      const type = this.shapeKeywords[shapeType] || 'rectangle';
+      return { name, type };
+    }
+
+    // No explicit shape, use label-based detection
+    const lowerLabel = trimmed.toLowerCase();
+    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
+    return { name: trimmed, type };
+  }
+
   ensureNode(label) {
-    const trimmedLabel = label.trim();
+    const { name, type } = this.parseNodeLabel(label);
 
-    if (!this.nodes.has(trimmedLabel)) {
-      // Determine node type based on label
-      const lowerLabel = trimmedLabel.toLowerCase();
-      let type = 'rectangle'; // Default type
-
-      // Check if label matches a shape keyword
-      if (this.shapeKeywords[lowerLabel]) {
-        type = this.shapeKeywords[lowerLabel];
-      }
-
+    if (!this.nodes.has(name)) {
       const node = {
-        id: trimmedLabel,
-        label: trimmedLabel,
+        id: name,
+        label: name,
         type: type,
       };
 
-      this.nodes.set(trimmedLabel, node);
-      this.nodeOrder.push(trimmedLabel); // Track order of appearance
-      console.log(`[HybridParser] Created node: ${trimmedLabel} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
+      this.nodes.set(name, node);
+      this.nodeOrder.push(name); // Track order of appearance
+      console.log(`[DiagramParser] Created node: ${name} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
     } else {
-      console.log(`[HybridParser] Node already exists: ${trimmedLabel}`);
+      console.log(`[DiagramParser] Node already exists: ${name}`);
     }
+
+    return name; // Return the node ID for edge creation
   }
 
   layoutGraph(nodes, edges) {
@@ -257,7 +270,7 @@ export class HybridParser {
       source: edge.source,
       target: edge.target,
       label: edge.label,
-      type: 'smoothstep',
+      type: edge.source === edge.target ? 'selfLoop' : 'smoothstep',
       animated: false,
       markerEnd: {
         type: MarkerType.ArrowClosed,
