@@ -43,6 +43,16 @@ const customStyles = `
     opacity: 1 !important;
   }
 
+  /* Canvas background color */
+  .react-flow {
+    background-color: #f5f5f5 !important;
+  }
+
+  /* Edge label backgrounds */
+  .react-flow__edge-textbg {
+    fill: #f5f5f5 !important;
+  }
+
   /* Default cursor for pane (normal mode) */
   .react-flow__pane {
     cursor: default !important;
@@ -62,6 +72,7 @@ const FlowDiagram = ({
   initialNodes = [],
   initialEdges = [],
   commands = [],
+  diagramHistory = [],
   onNodesChange: onNodesChangeProp,
   onEdgesChange: onEdgesChangeProp,
   enableStyleInspector = true,
@@ -120,6 +131,13 @@ const FlowDiagram = ({
       alert(`Failed to import diagram: ${error.message}`);
     }
   }, [setNodes, setEdges]);
+
+  // Handle commands export
+  const handleExportCommands = useCallback(() => {
+    const commandsText = diagramHistory.join('\n');
+    navigator.clipboard.writeText(commandsText);
+    console.log('[FlowDiagram] Commands exported to clipboard');
+  }, [diagramHistory]);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showStyleInspector, setShowStyleInspector] = useState(false);
@@ -502,7 +520,7 @@ const FlowDiagram = ({
   return (
     <div
       className={`tq-flow-diagram-wrapper ${isSpacePressed ? 'tq-flow-space-pan' : ''}`}
-      style={{ width: '100%', height: '100%', position: 'relative' }}
+      style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: '#f5f5f5' }}
     >
       <style>{customStyles}</style>
       <ReactFlow
@@ -541,6 +559,7 @@ const FlowDiagram = ({
           onDefaultStyleChange={handleDefaultStyleChange}
           onExportPNG={onExportPNG}
           onExportJSON={handleExportJSON}
+          onExportCommands={handleExportCommands}
           onImportJSON={handleImportJSON}
           onClearCanvas={onClearCanvas}
           onSetInput={onSetInput}

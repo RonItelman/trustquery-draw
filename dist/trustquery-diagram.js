@@ -26031,6 +26031,7 @@ const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
   onExportJSON,
+  onExportCommands,
   onImportJSON,
   onClearCanvas,
   onSetInput,
@@ -26048,6 +26049,7 @@ const SettingsPanel = ({
   });
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [showCopied, setShowCopied] = reactExports.useState(false);
+  const [showCommandsCopied, setShowCommandsCopied] = reactExports.useState(false);
   const dragOffset = reactExports.useRef({
     x: 0,
     y: 0
@@ -26388,6 +26390,38 @@ const SettingsPanel = ({
       fontSize: 18
     }
   }, "code"), showCopied ? 'Copied to clipboard!' : 'Export to JSON'), /*#__PURE__*/React.createElement("button", {
+    id: "trustquery-settings-export-commands-button",
+    onClick: e => {
+      e.stopPropagation();
+      if (onExportCommands) {
+        onExportCommands();
+        setShowCommandsCopied(true);
+        setTimeout(() => setShowCommandsCopied(false), 2000);
+      }
+    },
+    style: {
+      width: '100%',
+      padding: '10px 12px',
+      background: '#f5f5f5',
+      color: '#333',
+      border: '1px solid #ddd',
+      borderRadius: 6,
+      cursor: 'pointer',
+      fontSize: 13,
+      fontWeight: 600,
+      marginBottom: 8,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      position: 'relative'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined",
+    style: {
+      fontSize: 18
+    }
+  }, "list_alt"), showCommandsCopied ? 'Copied to clipboard!' : 'Export Commands'), /*#__PURE__*/React.createElement("button", {
     id: "trustquery-settings-import-json-button",
     onClick: e => {
       e.stopPropagation();
@@ -41384,11 +41418,145 @@ const applyDecisionLayout = (nodes, edges) => {
 
 /**
  * Tree Layout (hierarchical top-down)
- * TODO: Implement tree layout
+ * Arranges nodes in a tree structure with roots at top
  */
 const applyTreeLayout = (nodes, edges) => {
-  console.log('[TreeLayout] Not yet implemented');
-  return nodes;
+  console.log('[TreeLayout] Starting layout with nodes:', nodes.length, 'edges:', edges.length);
+  if (nodes.length === 0) return nodes;
+
+  // Create a copy of nodes to modify
+  const updatedNodes = [...nodes];
+  const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
+
+  // Find root nodes (nodes with no incoming edges)
+  const incomingCount = new Map();
+  nodes.forEach(n => incomingCount.set(n.id, 0));
+  edges.forEach(e => {
+    incomingCount.set(e.target, (incomingCount.get(e.target) || 0) + 1);
+  });
+  const roots = nodes.filter(n => incomingCount.get(n.id) === 0);
+  console.log('[TreeLayout] Found roots:', roots.map(r => r.id));
+  if (roots.length === 0) {
+    console.warn('[TreeLayout] No root nodes found, using first node');
+    roots.push(nodes[0]);
+  }
+
+  // Build tree structure: parent -> children mapping
+  const children = new Map();
+  edges.forEach(edge => {
+    if (!children.has(edge.source)) {
+      children.set(edge.source, []);
+    }
+    children.get(edge.source).push(edge.target);
+  });
+
+  // Calculate tree levels (depth-first traversal)
+  const levels = new Map(); // nodeId -> level
+  const visited = new Set();
+  const assignLevels = (nodeId, level) => {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    levels.set(nodeId, level);
+    const nodeChildren = children.get(nodeId) || [];
+    nodeChildren.forEach(childId => assignLevels(childId, level + 1));
+  };
+  roots.forEach(root => assignLevels(root.id, 0));
+
+  // Group nodes by level
+  const nodesByLevel = new Map();
+  levels.forEach((level, nodeId) => {
+    if (!nodesByLevel.has(level)) {
+      nodesByLevel.set(level, []);
+    }
+    nodesByLevel.get(level).push(nodeId);
+  });
+
+  // Layout parameters
+  const levelHeight = 120;
+  const nodeSpacing = 150;
+  const startY = 50;
+
+  // Calculate positions level by level
+  nodesByLevel.forEach((nodeIds, level) => {
+    const totalWidth = (nodeIds.length - 1) * nodeSpacing;
+    const startX = 100 + (roots.length === 1 ? 200 : 0); // Center for single root
+
+    nodeIds.forEach((nodeId, index) => {
+      const node = nodeMap.get(nodeId);
+      if (node) {
+        node.position = {
+          x: startX + index * nodeSpacing - totalWidth / 2,
+          y: startY + level * levelHeight
+        };
+        console.log('[TreeLayout] Positioned', nodeId, 'at level', level, ':', node.position);
+      }
+    });
+  });
+
+  // Center parents above their children
+  const centerParents = nodeId => {
+    const nodeChildren = children.get(nodeId);
+    if (!nodeChildren || nodeChildren.length === 0) return;
+
+    // First, center all children
+    nodeChildren.forEach(childId => centerParents(childId));
+
+    // Calculate average X of children
+    const childNodes = nodeChildren.map(id => nodeMap.get(id)).filter(Boolean);
+    if (childNodes.length > 0) {
+      const avgX = childNodes.reduce((sum, child) => sum + child.position.x, 0) / childNodes.length;
+      const parent = nodeMap.get(nodeId);
+      if (parent) {
+        parent.position.x = avgX;
+      }
+    }
+  };
+  roots.forEach(root => centerParents(root.id));
+
+  // Calculate subtree bounds (rightmost child position)
+  const getSubtreeRight = nodeId => {
+    const node = nodeMap.get(nodeId);
+    if (!node) return 0;
+    const nodeChildren = children.get(nodeId);
+    if (!nodeChildren || nodeChildren.length === 0) {
+      return node.position.x;
+    }
+
+    // Return the rightmost position of all children
+    return Math.max(...nodeChildren.map(childId => getSubtreeRight(childId)));
+  };
+  const subtreeGap = 100; // Extra gap between subtrees
+
+  nodesByLevel.forEach((nodeIds, level) => {
+    // Sort siblings by X position
+    const sortedNodes = nodeIds.map(id => nodeMap.get(id)).filter(Boolean).sort((a, b) => a.position.x - b.position.x);
+
+    // Adjust positions to maintain spacing based on subtree widths
+    for (let i = 1; i < sortedNodes.length; i++) {
+      const prev = sortedNodes[i - 1];
+      const curr = sortedNodes[i];
+
+      // Calculate required spacing based on previous node's subtree
+      const prevSubtreeRight = getSubtreeRight(prev.id);
+      const requiredMinX = prevSubtreeRight + subtreeGap;
+      if (curr.position.x < requiredMinX) {
+        // Push current node and its entire subtree to the right
+        const shift = requiredMinX - curr.position.x;
+        const shiftSubtree = (nodeId, shiftAmount) => {
+          const node = nodeMap.get(nodeId);
+          if (node) {
+            node.position.x += shiftAmount;
+            const nodeChildren = children.get(nodeId);
+            if (nodeChildren) {
+              nodeChildren.forEach(childId => shiftSubtree(childId, shiftAmount));
+            }
+          }
+        };
+        shiftSubtree(curr.id, shift);
+      }
+    }
+  });
+  return updatedNodes;
 };
 
 /**
@@ -41430,6 +41598,16 @@ const customStyles = `
     opacity: 1 !important;
   }
 
+  /* Canvas background color */
+  .react-flow {
+    background-color: #f5f5f5 !important;
+  }
+
+  /* Edge label backgrounds */
+  .react-flow__edge-textbg {
+    fill: #f5f5f5 !important;
+  }
+
   /* Default cursor for pane (normal mode) */
   .react-flow__pane {
     cursor: default !important;
@@ -41448,6 +41626,7 @@ const FlowDiagram = ({
   initialNodes = [],
   initialEdges = [],
   commands = [],
+  diagramHistory = [],
   onNodesChange: onNodesChangeProp,
   onEdgesChange: onEdgesChangeProp,
   enableStyleInspector = true,
@@ -41506,6 +41685,13 @@ const FlowDiagram = ({
       alert(`Failed to import diagram: ${error.message}`);
     }
   }, [setNodes, setEdges]);
+
+  // Handle commands export
+  const handleExportCommands = reactExports.useCallback(() => {
+    const commandsText = diagramHistory.join('\n');
+    navigator.clipboard.writeText(commandsText);
+    console.log('[FlowDiagram] Commands exported to clipboard');
+  }, [diagramHistory]);
   const [isSpacePressed, setIsSpacePressed] = reactExports.useState(false);
   const [selectedNode, setSelectedNode] = reactExports.useState(null);
   const [showStyleInspector, setShowStyleInspector] = reactExports.useState(false);
@@ -41720,7 +41906,7 @@ const FlowDiagram = ({
                     layoutedNodes = applyDecisionLayout(currentNodes, currentEdges);
                     break;
                   case 'tree':
-                    layoutedNodes = applyTreeLayout(currentNodes);
+                    layoutedNodes = applyTreeLayout(currentNodes, currentEdges);
                     break;
                   case 'grid':
                     layoutedNodes = applyGridLayout(currentNodes);
@@ -41860,7 +42046,8 @@ const FlowDiagram = ({
     style: {
       width: '100%',
       height: '100%',
-      position: 'relative'
+      position: 'relative',
+      backgroundColor: '#f5f5f5'
     }
   }, /*#__PURE__*/React.createElement("style", null, customStyles), /*#__PURE__*/React.createElement(ReactFlow, {
     nodes: nodesWithCallback,
@@ -41904,6 +42091,7 @@ const FlowDiagram = ({
     onDefaultStyleChange: handleDefaultStyleChange,
     onExportPNG: onExportPNG,
     onExportJSON: handleExportJSON,
+    onExportCommands: handleExportCommands,
     onImportJSON: handleImportJSON,
     onClearCanvas: onClearCanvas,
     onSetInput: onSetInput
@@ -42832,8 +43020,9 @@ class ReactFlowHandler {
    * @param {Array} edges - ReactFlow edges
    * @param {string} type - Diagram type key
    * @param {Array} commands - Commands to execute (optional)
+   * @param {Array} diagramHistory - Command history for export (optional)
    */
-  renderNodes(nodes, edges, type = 'shapes', commands = []) {
+  renderNodes(nodes, edges, type = 'shapes', commands = [], diagramHistory = []) {
     // Check if diagram of this type already exists
     const existing = this.diagrams.get(type);
     if (existing) {
@@ -42843,6 +43032,7 @@ class ReactFlowHandler {
         initialNodes: nodes,
         initialEdges: edges,
         commands: commands,
+        diagramHistory: diagramHistory,
         enableStyleInspector: this.options.enableStyleInspector,
         onNodeSelected: this.options.onNodeSelected,
         onStyleChange: this.options.onStyleChange,
@@ -42885,6 +43075,7 @@ class ReactFlowHandler {
       initialNodes: nodes,
       initialEdges: edges,
       commands: commands,
+      diagramHistory: diagramHistory,
       enableStyleInspector: this.options.enableStyleInspector,
       onNodeSelected: this.options.onNodeSelected,
       onStyleChange: this.options.onStyleChange,
@@ -43061,6 +43252,8 @@ class TrustQueryDraw {
     this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
 
+    // API endpoint for LLM calls
+    this.apiEndpoint = options.apiEndpoint || 'http://localhost:3001/api/generate-diagram';
     this.init();
   }
   normalizeOptions(options) {
@@ -43135,6 +43328,14 @@ class TrustQueryDraw {
     // If mode is OFF, do nothing
     if (mode === 'off') {
       console.log('[TrustQueryDraw] Mode is OFF - skipping');
+      return;
+    }
+
+    // Check if text starts with "?" - AI generation mode
+    if (text.startsWith('?')) {
+      console.log('[TrustQueryDraw] AI generation mode detected');
+      const prompt = text.substring(1).trim(); // Remove "?" prefix
+      this.generateWithAI(prompt);
       return;
     }
 
@@ -43296,6 +43497,56 @@ class TrustQueryDraw {
   }
   disable() {
     this.enabled = false;
+  }
+
+  /**
+   * Generate diagram using AI from natural language prompt
+   * @param {string} prompt - Natural language description
+   */
+  async generateWithAI(prompt) {
+    if (!prompt) {
+      this.showError('Please provide a description after the "?" character');
+      return;
+    }
+    console.log('[TrustQueryDraw] Generating diagram with AI:', prompt);
+
+    // Get selected model from UIControls if available
+    const model = window.uiControls?.getSelectedModel() || 'claude-3-5-sonnet-20241022';
+    try {
+      // Call API
+      const response = await fetch(this.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt,
+          model
+        })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'API request failed');
+      }
+      const result = await response.json();
+      if (!result.success || !result.commands) {
+        throw new Error('Invalid API response');
+      }
+      console.log('[TrustQueryDraw] AI generated commands:', result.commands);
+      console.log('[TrustQueryDraw] Token usage:', result.usage);
+
+      // Execute commands sequentially
+      for (const command of result.commands) {
+        this.diagramHistory.push(command);
+      }
+
+      // Re-render with all commands
+      this.scan();
+      console.log('[TrustQueryDraw] AI generation complete');
+    } catch (error) {
+      console.error('[TrustQueryDraw] AI generation error:', error);
+      this.showError(`AI generation failed: ${error.message}`);
+    }
   }
 
   /**

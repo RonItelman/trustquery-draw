@@ -297,8 +297,8 @@
 
         <!-- Section 3: Quick Diagram Pattern Commands -->
         <div class="mode-section pattern-commands">
-          <button class="example-btn" id="auth-example-btn">Auth</button>
           <button class="example-btn" id="decision-example-btn">Decision</button>
+          <button class="example-btn" id="tree-example-btn">Tree</button>
         </div>
       </div>
 
@@ -310,6 +310,25 @@
   </div>
 
   <script type="module">
+    /**
+     * TrustQuery Diagram - Main Application
+     *
+     * ADDING NEW COMMANDS:
+     * When you add a new diagram command, register it in CommandRegistry.js:
+     *
+     * // In server/CommandRegistry.js
+     * CommandRegistry.register({
+     *   category: 'commands',        // 'nodes', 'edges', or 'commands'
+     *   syntax: '=newCommand(arg1, arg2)',
+     *   description: 'What this command does',
+     *   examples: ['=newCommand(foo, bar)', '=newCommand(baz, qux)'],
+     *   notes: 'Optional helpful notes for users'
+     * });
+     *
+     * The LLM system prompt will automatically include new commands.
+     * No need to manually update documentation!
+     */
+
     import TrustQueryDraw from '../dist/trustquery-diagram.js';
     import ModeManager from '../src/ModeManager.js';
     import UIControls from '../src/UIControls.js';

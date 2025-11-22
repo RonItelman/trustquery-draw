@@ -43,8 +43,9 @@ export default class ReactFlowHandler {
    * @param {Array} edges - ReactFlow edges
    * @param {string} type - Diagram type key
    * @param {Array} commands - Commands to execute (optional)
+   * @param {Array} diagramHistory - Command history for export (optional)
    */
-  renderNodes(nodes, edges, type = 'shapes', commands = []) {
+  renderNodes(nodes, edges, type = 'shapes', commands = [], diagramHistory = []) {
     // Check if diagram of this type already exists
     const existing = this.diagrams.get(type);
 
@@ -56,6 +57,7 @@ export default class ReactFlowHandler {
           initialNodes={nodes}
           initialEdges={edges}
           commands={commands}
+          diagramHistory={diagramHistory}
           enableStyleInspector={this.options.enableStyleInspector}
           onNodeSelected={this.options.onNodeSelected}
           onStyleChange={this.options.onStyleChange}
@@ -101,6 +103,7 @@ export default class ReactFlowHandler {
         initialNodes={nodes}
         initialEdges={edges}
         commands={commands}
+        diagramHistory={diagramHistory}
         enableStyleInspector={this.options.enableStyleInspector}
         onNodeSelected={this.options.onNodeSelected}
         onStyleChange={this.options.onStyleChange}

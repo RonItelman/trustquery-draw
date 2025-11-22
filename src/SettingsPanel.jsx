@@ -4,6 +4,7 @@ const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
   onExportJSON,
+  onExportCommands,
   onImportJSON,
   onClearCanvas,
   onSetInput,
@@ -18,6 +19,7 @@ const SettingsPanel = ({
   const [position, setPosition] = useState({ x: null, y: null });
   const [isDragging, setIsDragging] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
+  const [showCommandsCopied, setShowCommandsCopied] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const panelRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -354,6 +356,39 @@ const SettingsPanel = ({
             >
               <span className="material-symbols-outlined" style={{ fontSize: 18 }}>code</span>
               {showCopied ? 'Copied to clipboard!' : 'Export to JSON'}
+            </button>
+
+            {/* Export Commands Button */}
+            <button
+              id="trustquery-settings-export-commands-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onExportCommands) {
+                  onExportCommands();
+                  setShowCommandsCopied(true);
+                  setTimeout(() => setShowCommandsCopied(false), 2000);
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                position: 'relative',
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>list_alt</span>
+              {showCommandsCopied ? 'Copied to clipboard!' : 'Export Commands'}
             </button>
 
             {/* Import JSON Button */}

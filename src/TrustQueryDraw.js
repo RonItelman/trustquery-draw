@@ -85,6 +85,9 @@ export default class TrustQueryDraw {
     this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
 
+    // API endpoint for LLM calls
+    this.apiEndpoint = options.apiEndpoint || 'http://localhost:3001/api/generate-diagram';
+
     this.init();
   }
 
@@ -170,6 +173,14 @@ export default class TrustQueryDraw {
     // If mode is OFF, do nothing
     if (mode === 'off') {
       console.log('[TrustQueryDraw] Mode is OFF - skipping');
+      return;
+    }
+
+    // Check if text starts with "?" - AI generation mode
+    if (text.startsWith('?')) {
+      console.log('[TrustQueryDraw] AI generation mode detected');
+      const prompt = text.substring(1).trim(); // Remove "?" prefix
+      this.generateWithAI(prompt);
       return;
     }
 
@@ -318,6 +329,63 @@ export default class TrustQueryDraw {
 
   disable() {
     this.enabled = false;
+  }
+
+  /**
+   * Generate diagram using AI from natural language prompt
+   * @param {string} prompt - Natural language description
+   */
+  async generateWithAI(prompt) {
+    if (!prompt) {
+      this.showError('Please provide a description after the "?" character');
+      return;
+    }
+
+    console.log('[TrustQueryDraw] Generating diagram with AI:', prompt);
+
+    // Get selected model from UIControls if available
+    const model = window.uiControls?.getSelectedModel() || 'claude-3-5-sonnet-20241022';
+
+    try {
+      // Call API
+      const response = await fetch(this.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          model,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'API request failed');
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.commands) {
+        throw new Error('Invalid API response');
+      }
+
+      console.log('[TrustQueryDraw] AI generated commands:', result.commands);
+      console.log('[TrustQueryDraw] Token usage:', result.usage);
+
+      // Execute commands sequentially
+      for (const command of result.commands) {
+        this.diagramHistory.push(command);
+      }
+
+      // Re-render with all commands
+      this.scan();
+
+      console.log('[TrustQueryDraw] AI generation complete');
+    } catch (error) {
+      console.error('[TrustQueryDraw] AI generation error:', error);
+      this.showError(`AI generation failed: ${error.message}`);
+    }
   }
 
   /**
