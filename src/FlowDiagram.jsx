@@ -10,24 +10,19 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import RectangleNode from './nodes/RectangleNode.jsx';
-import DiamondNode from './nodes/DiamondNode.jsx';
 import CircleNode from './nodes/CircleNode.jsx';
 import SquareNode from './nodes/SquareNode.jsx';
-import StarNode from './nodes/StarNode.jsx';
-import PentagonNode from './nodes/PentagonNode.jsx';
-import HexagonNode from './nodes/HexagonNode.jsx';
+import DiamondNode from './nodes/DiamondNode.jsx';
 import StyleInspector from './StyleInspector.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
 import SelfLoopEdge from './edges/SelfLoopEdge.jsx';
+import { nodeDefaults } from './nodes/nodeDefaults.js';
 
 const nodeTypes = {
   rectangle: RectangleNode,
-  diamond: DiamondNode,
   circle: CircleNode,
   square: SquareNode,
-  star: StarNode,
-  pentagon: PentagonNode,
-  hexagon: HexagonNode,
+  diamond: DiamondNode,
   default: RectangleNode, // Fallback to rectangle
 };
 
@@ -72,13 +67,36 @@ const FlowDiagram = ({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [isModifierKeyPressed, setIsModifierKeyPressed] = useState(false);
+
+  // Handle JSON export
+  const handleExportJSON = useCallback(() => {
+    const exportData = {
+      nodes: nodes.map(node => ({
+        id: node.id,
+        type: node.type,
+        label: node.data.label,
+        position: node.position,
+        styleOverrides: node.data.styleOverrides,
+      })),
+      edges: edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label,
+        type: edge.type,
+      })),
+    };
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    navigator.clipboard.writeText(jsonString);
+  }, [nodes, edges]);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showStyleInspector, setShowStyleInspector] = useState(false);
   const [defaultStyles, setDefaultStyles] = useState({
     fillColor: '#ffffff',
     borderColor: '#000000',
-    borderWidth: 2,
+    borderWidth: 1,
   });
   const reactFlowInstance = useRef(null);
 
@@ -105,6 +123,10 @@ const FlowDiagram = ({
         } else {
           // New node - apply default styles
           const { style, ...nodeWithoutStyle } = newNode;
+          // Get default fontSize for this node type
+          const nodeTypeDefaults = nodeDefaults[newNode.type] || nodeDefaults.rectangle;
+          const defaultFontSize = nodeTypeDefaults.fontSize || '11px';
+
           return {
             ...nodeWithoutStyle,
             data: {
@@ -113,6 +135,7 @@ const FlowDiagram = ({
                 backgroundColor: defaultStyles.fillColor,
                 borderColor: defaultStyles.borderColor,
                 borderWidth: defaultStyles.borderWidth,
+                fontSize: defaultFontSize,
               },
             },
           };
@@ -125,7 +148,16 @@ const FlowDiagram = ({
 
   // Update edges when initialEdges changes
   useEffect(() => {
-    setEdges(initialEdges);
+    setEdges((currentEdges) => {
+      // Create a map of initial edges by ID
+      const initialEdgesMap = new Map(initialEdges.map(e => [e.id, e]));
+
+      // Keep manually created edges (ones not in initialEdges)
+      const manualEdges = currentEdges.filter(edge => !initialEdgesMap.has(edge.id));
+
+      // Merge: initialEdges + manual edges
+      return [...initialEdges, ...manualEdges];
+    });
   }, [initialEdges, setEdges]);
 
   // Log JSON representation whenever nodes or edges change
@@ -346,6 +378,7 @@ const FlowDiagram = ({
           defaultStyles={defaultStyles}
           onDefaultStyleChange={handleDefaultStyleChange}
           onExportPNG={onExportPNG}
+          onExportJSON={handleExportJSON}
           onClearCanvas={onClearCanvas}
           onSetInput={onSetInput}
         />

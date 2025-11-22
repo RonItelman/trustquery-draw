@@ -25208,39 +25208,26 @@ const nodeDefaults = {
   rectangle: {
     borderRadius: '3px',
     padding: '8px 12px',
-    border: '2px solid #1a192b',
+    border: '1px solid #1a192b',
     background: '#fff',
     minWidth: '60px',
-    fontSize: '12px',
+    fontSize: '11px',
     textAlign: 'center',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    whiteSpace: 'nowrap'
-  },
-  diamond: {
-    padding: '15px 20px',
-    border: '2px solid #1a192b',
-    background: '#fff4e6',
-    minWidth: '60px',
-    fontSize: '12px',
-    textAlign: 'center',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '60px',
     whiteSpace: 'nowrap'
   },
   circle: {
     borderRadius: '50%',
     padding: '15px',
-    border: '2px solid #1a192b',
+    border: '1px solid #1a192b',
     background: '#e3f2fd',
     width: '60px',
     height: '60px',
     minWidth: '60px',
     minHeight: '60px',
-    fontSize: '12px',
+    fontSize: '11px',
     textAlign: 'center',
     display: 'flex',
     alignItems: 'center',
@@ -25250,111 +25237,87 @@ const nodeDefaults = {
   square: {
     borderRadius: '3px',
     padding: '15px',
-    border: '2px solid #1a192b',
+    border: '1px solid #1a192b',
     background: '#f3e5f5',
     width: '60px',
     height: '60px',
     minWidth: '60px',
     minHeight: '60px',
-    fontSize: '12px',
+    fontSize: '11px',
     textAlign: 'center',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     whiteSpace: 'nowrap'
   },
-  star: {
-    padding: '0',
-    background: '#fff9c4',
-    minWidth: '60px',
+  diamond: {
+    padding: '15px 20px',
+    border: '1px solid #1a192b',
+    background: '#fff4e6',
+    minWidth: '100px',
     fontSize: '11px',
     textAlign: 'center',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center'
-  },
-  pentagon: {
-    padding: '0',
-    background: '#e0f2f1',
-    minWidth: '60px',
-    fontSize: '11px',
-    textAlign: 'center',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  hexagon: {
-    padding: '0',
-    background: '#fce4ec',
-    minWidth: '60px',
-    fontSize: '11px',
-    textAlign: 'center',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minHeight: '100px',
+    whiteSpace: 'nowrap'
   }
 };
 
-const RectangleNode = ({
-  data,
-  selected,
-  style = {},
-  id
-}) => {
-  // Get default styles for this node type
-  const defaultStyle = nodeDefaults.rectangle;
-
-  // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
-  const styleOverrides = data.styleOverrides || {};
-  const nodeStyle = {
-    ...defaultStyle,
-    ...styleOverrides
-  };
+/**
+ * Custom hook for handling node resize with uniform scaling
+ * @param {Object} options
+ * @param {string} options.nodeId - The node ID
+ * @param {number} options.initialWidth - Starting width
+ * @param {number} options.initialHeight - Starting height (optional, defaults to width for square aspect)
+ * @param {number} options.initialFontSize - Starting font size
+ * @param {number} options.minSize - Minimum size (default: 40)
+ * @param {number} options.minFontSize - Minimum font size (default: 8)
+ * @param {number} options.maxFontSize - Maximum font size (default: 24)
+ * @param {Function} options.onStyleChange - Callback to update styles
+ * @param {boolean} options.uniformScale - Whether to scale uniformly (default: true)
+ * @returns {Object} { isResizing, handleResizeStart }
+ */
+function useResize({
+  nodeId,
+  initialWidth,
+  initialHeight,
+  initialFontSize = 12,
+  minSize = 40,
+  minFontSize = 8,
+  maxFontSize = 24,
+  onStyleChange,
+  uniformScale = true
+}) {
   const [isResizing, setIsResizing] = reactExports.useState(false);
-  const [isEditing, setIsEditing] = reactExports.useState(false);
-  const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
-  const handleDoubleClick = e => {
-    e.stopPropagation();
-    setIsEditing(true);
-    setEditedLabel(data.label);
-  };
-  const handleLabelChange = e => {
-    setEditedLabel(e.target.value);
-  };
-  const handleLabelSubmit = () => {
-    if (editedLabel.trim() && data.onLabelChange) {
-      data.onLabelChange(id, editedLabel.trim());
-    }
-    setIsEditing(false);
-  };
-  const handleLabelKeyDown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLabelSubmit();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditedLabel(data.label);
-    }
-  };
-  const handleResizeStart = e => {
+  const handleResizeStart = reactExports.useCallback(e => {
     e.stopPropagation();
     setIsResizing(true);
     const startX = e.clientX;
     const startY = e.clientY;
-    const startWidth = parseFloat(nodeStyle.minWidth) || 100;
-    const startHeight = parseFloat(nodeStyle.minHeight) || 60;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 12;
-    const aspectRatio = startWidth / startHeight;
+    const startWidth = initialWidth;
+    const startHeight = initialHeight;
+    const startFontSize = initialFontSize;
     const handleMouseMove = moveEvent => {
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
-      const delta = Math.max(deltaX, deltaY);
-      const newWidth = Math.max(60, startWidth + delta);
-      const newHeight = newWidth / aspectRatio;
-      const scale = newWidth / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
+      let newWidth, newHeight, scale;
+      if (uniformScale) {
+        // Use larger delta for uniform scaling
+        const delta = Math.max(deltaX, deltaY);
+        newWidth = Math.max(minSize, startWidth + delta);
+        newHeight = Math.max(minSize, startHeight + delta);
+        scale = newWidth / startWidth;
+      } else {
+        // Independent width/height scaling
+        newWidth = Math.max(minSize, startWidth + deltaX);
+        newHeight = Math.max(minSize, startHeight + deltaY);
+        scale = Math.max(newWidth / startWidth, newHeight / startHeight);
+      }
+      const newFontSize = Math.max(minFontSize, Math.min(maxFontSize, startFontSize * scale));
+      if (onStyleChange) {
+        onStyleChange(nodeId, {
           minWidth: `${newWidth}px`,
           minHeight: `${newHeight}px`,
           width: `${newWidth}px`,
@@ -25370,144 +25333,49 @@ const RectangleNode = ({
     };
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+  }, [nodeId, initialWidth, initialHeight, initialFontSize, minSize, minFontSize, maxFontSize, onStyleChange, uniformScale]);
+  return {
+    isResizing,
+    handleResizeStart
   };
-  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -6,
-      left: -6,
-      right: -6,
-      bottom: -6,
-      border: '2px solid #2196F3',
-      borderRadius: '6px',
-      pointerEvents: 'none',
-      zIndex: -1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      right: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "nodrag",
-    onMouseDown: handleResizeStart,
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      right: -4,
-      width: 10,
-      height: 10,
-      background: '#FF9800',
-      border: '1px solid white',
-      borderRadius: '2px',
-      cursor: 'nwse-resize',
-      pointerEvents: 'auto',
-      zIndex: 20
-    },
-    title: "Resize"
-  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
-    onClick: e => {
-      e.stopPropagation();
-      console.log('[RectangleNode] Gear icon clicked, calling onOpenStyleInspector');
-      data.onOpenStyleInspector();
-    },
-    style: {
-      position: 'absolute',
-      top: -12,
-      left: -12,
-      width: 24,
-      height: 24,
-      background: '#2196F3',
-      border: '2px solid white',
-      borderRadius: '50%',
-      cursor: 'pointer',
-      pointerEvents: 'auto',
-      zIndex: 10,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '14px',
-      color: 'white',
-      fontWeight: 'bold',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-    },
-    title: "Open Style Inspector"
-  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
-    className: "node-content",
-    style: nodeStyle,
-    onDoubleClick: handleDoubleClick
-  }, isEditing ? /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: editedLabel,
-    onChange: handleLabelChange,
-    onBlur: handleLabelSubmit,
-    onKeyDown: handleLabelKeyDown,
-    autoFocus: true,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      outline: '2px solid #2196F3',
-      textAlign: 'center',
-      fontSize: nodeStyle.fontSize,
-      width: '100%',
-      padding: '2px'
-    },
-    className: "nodrag"
-  }) : data.label), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "target",
-    position: Position.Left
-  }), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "source",
-    position: Position.Right
-  }));
-};
+}
 
-const DiamondNode = ({
+/**
+ * BaseNode - Common node component that all shape nodes extend
+ * Handles editing, selection, resizing, and connection points
+ */
+const BaseNode = ({
+  id,
   data,
   selected,
-  style = {},
-  id
+  nodeType = 'rectangle',
+  uniformScale = true,
+  calculateSize = null,
+  // Optional function to calculate dynamic size based on label
+  renderShape // Function that renders the shape-specific part
 }) => {
-  // Get default styles for this node type
-  const defaultStyle = nodeDefaults.diamond;
-
-  // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
+  const defaultStyle = nodeDefaults[nodeType];
   const styleOverrides = data.styleOverrides || {};
   const nodeStyle = {
     ...defaultStyle,
     ...styleOverrides
   };
-  const [isResizing, setIsResizing] = reactExports.useState(false);
   const [isEditing, setIsEditing] = reactExports.useState(false);
   const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
+
+  // Calculate size (allow shapes to override)
+  const estimatedSize = calculateSize ? calculateSize(data.label, nodeStyle) : null;
+  const {
+    handleResizeStart
+  } = useResize({
+    nodeId: id,
+    initialWidth: estimatedSize?.width || parseFloat(nodeStyle.width) || parseFloat(nodeStyle.minWidth) || 60,
+    initialHeight: estimatedSize?.height || parseFloat(nodeStyle.height) || parseFloat(nodeStyle.minHeight) || 60,
+    initialFontSize: parseFloat(nodeStyle.fontSize) || 11,
+    minSize: estimatedSize?.minSize || 40,
+    onStyleChange: data.onStyleChange,
+    uniformScale
+  });
   const handleDoubleClick = e => {
     e.stopPropagation();
     setIsEditing(true);
@@ -25523,7 +25391,7 @@ const DiamondNode = ({
     setIsEditing(false);
   };
   const handleLabelKeyDown = e => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleLabelSubmit();
     } else if (e.key === 'Escape') {
@@ -25531,58 +25399,41 @@ const DiamondNode = ({
       setEditedLabel(data.label);
     }
   };
-  const handleResizeStart = e => {
-    e.stopPropagation();
-    setIsResizing(true);
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = parseFloat(nodeStyle.minWidth) || 70;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 11;
-    const handleMouseMove = moveEvent => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      const delta = Math.max(deltaX, deltaY); // Use larger delta for uniform scaling
 
-      const newSize = Math.max(40, startWidth + delta);
-      const scale = newSize / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
-          minWidth: `${newSize}px`,
-          minHeight: `${newSize}px`,
-          width: `${newSize}px`,
-          height: `${newSize}px`,
-          fontSize: `${newFontSize}px`
-        });
-      }
-    };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
+  // Render label (used by all shapes)
+  const renderLabel = (labelStyle = {}) => /*#__PURE__*/React.createElement("div", {
+    className: "trustquery-diagram-node-label",
+    onDoubleClick: handleDoubleClick,
+    style: {
+      position: 'relative',
+      zIndex: 1,
+      whiteSpace: 'pre-wrap',
+      fontSize: nodeStyle.fontSize,
+      ...labelStyle
+    }
+  }, isEditing ? /*#__PURE__*/React.createElement("textarea", {
+    value: editedLabel,
+    onChange: handleLabelChange,
+    onBlur: handleLabelSubmit,
+    onKeyDown: handleLabelKeyDown,
+    autoFocus: true,
+    style: {
+      background: 'transparent',
+      border: 'none',
+      outline: '2px solid #2196F3',
+      textAlign: 'center',
+      fontSize: nodeStyle.fontSize,
+      width: '100%',
+      padding: '2px',
+      resize: 'none',
+      fontFamily: 'inherit',
+      whiteSpace: 'pre-wrap'
+    },
+    className: "nodrag"
+  }) : data.label);
 
-  // Extract background and border for SVG
-  const backgroundColor = nodeStyle.background;
-  const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
-  const borderWidth = nodeStyle.border?.split(' ')[0] || '2px';
-
-  // Container needs explicit dimensions for SVG to render
-  const containerStyle = {
-    width: nodeStyle.width || nodeStyle.minWidth || '100px',
-    height: nodeStyle.height || nodeStyle.minHeight || '100px',
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "node-content",
-    style: containerStyle
-  }, selected && /*#__PURE__*/React.createElement("div", {
+  // Selection indicators (used by all shapes)
+  const renderSelection = () => selected && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: -6,
@@ -25644,7 +25495,10 @@ const DiamondNode = ({
       zIndex: 20
     },
     title: "Resize"
-  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
+  }));
+
+  // Style inspector button (used by all shapes)
+  const renderStyleInspector = () => selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
     onClick: e => {
       e.stopPropagation();
       data.onOpenStyleInspector();
@@ -25670,52 +25524,62 @@ const DiamondNode = ({
       boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
     },
     title: "Open Style Inspector"
-  }, "\u2699"), /*#__PURE__*/React.createElement("svg", {
-    style: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      pointerEvents: 'none',
-      zIndex: -1
-    }
-  }, /*#__PURE__*/React.createElement("polygon", {
-    points: "50,0 100,50 50,100 0,50",
-    fill: backgroundColor,
-    stroke: borderColor,
-    strokeWidth: borderWidth,
-    vectorEffect: "non-scaling-stroke"
-  })), /*#__PURE__*/React.createElement("div", {
-    onDoubleClick: handleDoubleClick,
-    style: {
-      position: 'relative',
-      zIndex: 1
-    }
-  }, isEditing ? /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: editedLabel,
-    onChange: handleLabelChange,
-    onBlur: handleLabelSubmit,
-    onKeyDown: handleLabelKeyDown,
-    autoFocus: true,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      outline: '2px solid #2196F3',
-      textAlign: 'center',
-      fontSize: nodeStyle.fontSize,
-      width: '100%',
-      padding: '2px'
-    },
-    className: "nodrag"
-  }) : data.label), /*#__PURE__*/React.createElement(Handle$1, {
+  }, "\u2699");
+
+  // Connection handles (used by all shapes)
+  const renderHandles = () => /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Handle$1, {
     type: "target",
-    position: Position.Left
+    position: Position.Left,
+    id: "left"
   }), /*#__PURE__*/React.createElement(Handle$1, {
     type: "source",
-    position: Position.Right
+    position: Position.Right,
+    id: "right"
   }));
+
+  // Call the shape-specific renderer with all the common utilities
+  return renderShape({
+    nodeStyle,
+    estimatedSize,
+    renderLabel,
+    renderSelection,
+    renderStyleInspector,
+    renderHandles
+  });
+};
+
+const RectangleNode = ({
+  data,
+  selected,
+  style = {},
+  id
+}) => {
+  return /*#__PURE__*/React.createElement(BaseNode, {
+    id: id,
+    data: data,
+    selected: selected,
+    nodeType: "rectangle",
+    uniformScale: false // Rectangles resize non-uniformly
+    ,
+    calculateSize: (label, nodeStyle) => ({
+      width: parseFloat(nodeStyle.minWidth) || 100,
+      height: parseFloat(nodeStyle.minHeight) || 60,
+      minSize: 60
+    }),
+    renderShape: ({
+      nodeStyle,
+      renderLabel,
+      renderSelection,
+      renderStyleInspector,
+      renderHandles
+    }) => /*#__PURE__*/React.createElement(React.Fragment, null, renderSelection(), renderStyleInspector(), /*#__PURE__*/React.createElement("div", {
+      className: "node-content trustquery-diagram-node-label",
+      style: {
+        ...nodeStyle,
+        whiteSpace: 'pre-wrap'
+      }
+    }, renderLabel()), renderHandles())
+  });
 };
 
 const CircleNode = ({
@@ -25724,191 +25588,27 @@ const CircleNode = ({
   style = {},
   id
 }) => {
-  // Get default styles for this node type
-  const defaultStyle = nodeDefaults.circle;
-
-  // Merge default with styleOverrides from data (not the style prop which is applied to wrapper)
-  const styleOverrides = data.styleOverrides || {};
-  const nodeStyle = {
-    ...defaultStyle,
-    ...styleOverrides
-  };
-  const [isResizing, setIsResizing] = reactExports.useState(false);
-  const [isEditing, setIsEditing] = reactExports.useState(false);
-  const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
-  const handleDoubleClick = e => {
-    e.stopPropagation();
-    setIsEditing(true);
-    setEditedLabel(data.label);
-  };
-  const handleLabelChange = e => {
-    setEditedLabel(e.target.value);
-  };
-  const handleLabelSubmit = () => {
-    if (editedLabel.trim() && data.onLabelChange) {
-      data.onLabelChange(id, editedLabel.trim());
-    }
-    setIsEditing(false);
-  };
-  const handleLabelKeyDown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLabelSubmit();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditedLabel(data.label);
-    }
-  };
-  const handleResizeStart = e => {
-    e.stopPropagation();
-    setIsResizing(true);
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = parseFloat(nodeStyle.minWidth) || 60;
-    parseFloat(nodeStyle.minHeight) || 60;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 12;
-    const handleMouseMove = moveEvent => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      const delta = Math.max(deltaX, deltaY); // Use larger delta for uniform scaling
-
-      const newSize = Math.max(40, startWidth + delta);
-      const scale = newSize / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
-          minWidth: `${newSize}px`,
-          minHeight: `${newSize}px`,
-          width: `${newSize}px`,
-          height: `${newSize}px`,
-          fontSize: `${newFontSize}px`
-        });
+  return /*#__PURE__*/React.createElement(BaseNode, {
+    id: id,
+    data: data,
+    selected: selected,
+    nodeType: "circle",
+    uniformScale: true // Circles must maintain aspect ratio
+    ,
+    renderShape: ({
+      nodeStyle,
+      renderLabel,
+      renderSelection,
+      renderStyleInspector,
+      renderHandles
+    }) => /*#__PURE__*/React.createElement(React.Fragment, null, renderSelection(), renderStyleInspector(), /*#__PURE__*/React.createElement("div", {
+      className: "node-content trustquery-diagram-node-label",
+      style: {
+        ...nodeStyle,
+        whiteSpace: 'pre-wrap'
       }
-    };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -6,
-      left: -6,
-      right: -6,
-      bottom: -6,
-      border: '2px solid #2196F3',
-      borderRadius: '6px',
-      pointerEvents: 'none',
-      zIndex: -1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      right: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "nodrag",
-    onMouseDown: handleResizeStart,
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      right: -4,
-      width: 10,
-      height: 10,
-      background: '#FF9800',
-      border: '1px solid white',
-      borderRadius: '2px',
-      cursor: 'nwse-resize',
-      pointerEvents: 'auto',
-      zIndex: 20
-    },
-    title: "Resize"
-  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
-    onClick: e => {
-      e.stopPropagation();
-      data.onOpenStyleInspector();
-    },
-    style: {
-      position: 'absolute',
-      top: -12,
-      left: -12,
-      width: 24,
-      height: 24,
-      background: '#2196F3',
-      border: '2px solid white',
-      borderRadius: '50%',
-      cursor: 'pointer',
-      pointerEvents: 'auto',
-      zIndex: 10,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '14px',
-      color: 'white',
-      fontWeight: 'bold',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-    },
-    title: "Open Style Inspector"
-  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
-    className: "node-content",
-    style: nodeStyle,
-    onDoubleClick: handleDoubleClick
-  }, isEditing ? /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: editedLabel,
-    onChange: handleLabelChange,
-    onBlur: handleLabelSubmit,
-    onKeyDown: handleLabelKeyDown,
-    autoFocus: true,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      outline: '2px solid #2196F3',
-      textAlign: 'center',
-      fontSize: nodeStyle.fontSize,
-      width: '100%',
-      padding: '2px'
-    },
-    className: "nodrag"
-  }) : data.label), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "target",
-    position: Position.Left
-  }), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "source",
-    position: Position.Right
-  }));
+    }, renderLabel()), renderHandles())
+  });
 };
 
 const SquareNode = ({
@@ -25917,858 +25617,99 @@ const SquareNode = ({
   style = {},
   id
 }) => {
-  const defaultStyle = nodeDefaults.square;
-  const styleOverrides = data.styleOverrides || {};
-  const nodeStyle = {
-    ...defaultStyle,
-    ...styleOverrides
-  };
-  const [isResizing, setIsResizing] = reactExports.useState(false);
-  const [isEditing, setIsEditing] = reactExports.useState(false);
-  const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
-  const handleDoubleClick = e => {
-    e.stopPropagation();
-    setIsEditing(true);
-    setEditedLabel(data.label);
-  };
-  const handleLabelChange = e => {
-    setEditedLabel(e.target.value);
-  };
-  const handleLabelSubmit = () => {
-    if (editedLabel.trim() && data.onLabelChange) {
-      data.onLabelChange(id, editedLabel.trim());
-    }
-    setIsEditing(false);
-  };
-  const handleLabelKeyDown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLabelSubmit();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditedLabel(data.label);
-    }
-  };
-  const handleResizeStart = e => {
-    e.stopPropagation();
-    setIsResizing(true);
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = parseFloat(nodeStyle.minWidth) || 60;
-    parseFloat(nodeStyle.minHeight) || 60;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 12;
-    const handleMouseMove = moveEvent => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      const delta = Math.max(deltaX, deltaY); // Use larger delta for uniform scaling
-
-      const newSize = Math.max(40, startWidth + delta);
-      const scale = newSize / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
-          minWidth: `${newSize}px`,
-          minHeight: `${newSize}px`,
-          width: `${newSize}px`,
-          height: `${newSize}px`,
-          fontSize: `${newFontSize}px`
-        });
+  return /*#__PURE__*/React.createElement(BaseNode, {
+    id: id,
+    data: data,
+    selected: selected,
+    nodeType: "square",
+    uniformScale: true // Squares must maintain aspect ratio
+    ,
+    renderShape: ({
+      nodeStyle,
+      renderLabel,
+      renderSelection,
+      renderStyleInspector,
+      renderHandles
+    }) => /*#__PURE__*/React.createElement(React.Fragment, null, renderSelection(), renderStyleInspector(), /*#__PURE__*/React.createElement("div", {
+      className: "node-content trustquery-diagram-node-label",
+      style: {
+        ...nodeStyle,
+        whiteSpace: 'pre-wrap'
       }
-    };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -6,
-      left: -6,
-      right: -6,
-      bottom: -6,
-      border: '2px solid #2196F3',
-      borderRadius: '6px',
-      pointerEvents: 'none',
-      zIndex: -1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      right: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "nodrag",
-    onMouseDown: handleResizeStart,
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      right: -4,
-      width: 10,
-      height: 10,
-      background: '#FF9800',
-      border: '1px solid white',
-      borderRadius: '2px',
-      cursor: 'nwse-resize',
-      pointerEvents: 'auto',
-      zIndex: 20
-    },
-    title: "Resize"
-  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
-    onClick: e => {
-      e.stopPropagation();
-      data.onOpenStyleInspector();
-    },
-    style: {
-      position: 'absolute',
-      top: -12,
-      left: -12,
-      width: 24,
-      height: 24,
-      background: '#2196F3',
-      border: '2px solid white',
-      borderRadius: '50%',
-      cursor: 'pointer',
-      pointerEvents: 'auto',
-      zIndex: 10,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '14px',
-      color: 'white',
-      fontWeight: 'bold',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-    },
-    title: "Open Style Inspector"
-  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
-    className: "node-content",
-    style: nodeStyle,
-    onDoubleClick: handleDoubleClick
-  }, isEditing ? /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: editedLabel,
-    onChange: handleLabelChange,
-    onBlur: handleLabelSubmit,
-    onKeyDown: handleLabelKeyDown,
-    autoFocus: true,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      outline: '2px solid #2196F3',
-      textAlign: 'center',
-      fontSize: nodeStyle.fontSize,
-      width: '100%',
-      padding: '2px'
-    },
-    className: "nodrag"
-  }) : data.label), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "target",
-    position: Position.Left
-  }), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "source",
-    position: Position.Right
-  }));
+    }, renderLabel()), renderHandles())
+  });
 };
 
-const StarNode = ({
+const DiamondNode = ({
   data,
   selected,
   style = {},
   id
 }) => {
-  const defaultStyle = nodeDefaults.star;
-  const styleOverrides = data.styleOverrides || {};
-  const nodeStyle = {
-    ...defaultStyle,
-    ...styleOverrides
-  };
-  const [isResizing, setIsResizing] = reactExports.useState(false);
-  const [isEditing, setIsEditing] = reactExports.useState(false);
-  const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
-  const handleDoubleClick = e => {
-    e.stopPropagation();
-    setIsEditing(true);
-    setEditedLabel(data.label);
-  };
-  const handleLabelChange = e => {
-    setEditedLabel(e.target.value);
-  };
-  const handleLabelSubmit = () => {
-    if (editedLabel.trim() && data.onLabelChange) {
-      data.onLabelChange(id, editedLabel.trim());
-    }
-    setIsEditing(false);
-  };
-  const handleLabelKeyDown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLabelSubmit();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditedLabel(data.label);
-    }
-  };
+  return /*#__PURE__*/React.createElement(BaseNode, {
+    id: id,
+    data: data,
+    selected: selected,
+    nodeType: "diamond",
+    uniformScale: true // Diamonds must maintain aspect ratio
+    ,
+    calculateSize: (label, nodeStyle) => {
+      // Calculate dynamic size based on label length
+      // Diamond needs more space due to diagonal orientation
+      const textLength = (label || '').length;
+      const estimatedWidth = Math.max(100, textLength * 9 + 40);
+      return {
+        width: parseFloat(nodeStyle.width) || parseFloat(nodeStyle.minWidth) || estimatedWidth,
+        height: parseFloat(nodeStyle.height) || parseFloat(nodeStyle.minHeight) || estimatedWidth,
+        minSize: 60
+      };
+    },
+    renderShape: ({
+      nodeStyle,
+      estimatedSize,
+      renderLabel,
+      renderSelection,
+      renderStyleInspector,
+      renderHandles
+    }) => {
+      // Extract background and border for SVG
+      const backgroundColor = nodeStyle.background;
+      const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
+      const borderWidth = nodeStyle.border?.split(' ')[0] || '1px';
 
-  // Calculate size based on text length or custom width from styleOverrides
-  const textLength = (data.label || '').length;
-  const estimatedWidth = Math.max(70, textLength * 8 + 20);
-  const customWidth = styleOverrides.customWidth ? parseFloat(styleOverrides.customWidth) : null;
-  const size = customWidth || estimatedWidth;
-  const handleResizeStart = e => {
-    e.stopPropagation();
-    setIsResizing(true);
-    const startX = e.clientX;
-    e.clientY;
-    const startWidth = size;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 11;
-    const handleMouseMove = moveEvent => {
-      const deltaX = moveEvent.clientX - startX;
-      const newWidth = Math.max(70, startWidth + deltaX);
-      const scale = newWidth / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
-          customWidth: `${newWidth}px`,
-          fontSize: `${newFontSize}px`
-        });
-      }
-    };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  // Extract background and border from nodeStyle
-  const background = nodeStyle.background || '#fff9c4';
-  const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
-  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -6,
-      left: -6,
-      right: -6,
-      bottom: -6,
-      border: '2px solid #2196F3',
-      borderRadius: '6px',
-      pointerEvents: 'none',
-      zIndex: -1
+      // Container needs explicit dimensions for SVG to render
+      const containerStyle = {
+        width: nodeStyle.width || nodeStyle.minWidth || `${estimatedSize?.width || 100}px`,
+        height: nodeStyle.height || nodeStyle.minHeight || `${estimatedSize?.height || 100}px`,
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      };
+      return /*#__PURE__*/React.createElement("div", {
+        className: "node-content",
+        style: containerStyle
+      }, renderSelection(), renderStyleInspector(), /*#__PURE__*/React.createElement("svg", {
+        viewBox: "0 0 100 100",
+        preserveAspectRatio: "none",
+        style: {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: -1
+        }
+      }, /*#__PURE__*/React.createElement("polygon", {
+        points: "50,0 100,50 50,100 0,50",
+        fill: backgroundColor,
+        stroke: borderColor,
+        strokeWidth: borderWidth,
+        vectorEffect: "non-scaling-stroke"
+      })), renderLabel(), renderHandles());
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      right: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "nodrag",
-    onMouseDown: handleResizeStart,
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      right: -4,
-      width: 10,
-      height: 10,
-      background: '#FF9800',
-      border: '1px solid white',
-      borderRadius: '2px',
-      cursor: 'nwse-resize',
-      pointerEvents: 'auto',
-      zIndex: 20
-    },
-    title: "Resize"
-  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
-    onClick: e => {
-      e.stopPropagation();
-      data.onOpenStyleInspector();
-    },
-    style: {
-      position: 'absolute',
-      top: -12,
-      left: -12,
-      width: 24,
-      height: 24,
-      background: '#2196F3',
-      border: '2px solid white',
-      borderRadius: '50%',
-      cursor: 'pointer',
-      pointerEvents: 'auto',
-      zIndex: 10,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '14px',
-      color: 'white',
-      fontWeight: 'bold',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-    },
-    title: "Open Style Inspector"
-  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'relative',
-      width: `${size}px`,
-      height: '70px'
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: size,
-    height: "70",
-    viewBox: "0 0 100 100",
-    preserveAspectRatio: "none",
-    style: {
-      position: 'absolute',
-      top: 0,
-      left: 0
-    }
-  }, /*#__PURE__*/React.createElement("polygon", {
-    points: "50,10 61,35 88,35 67,52 74,77 50,60 26,77 33,52 12,35 39,35",
-    fill: background,
-    stroke: borderColor,
-    strokeWidth: "2"
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      textAlign: 'center',
-      maxWidth: `${size - 20}px`,
-      fontSize: '11px',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
-    },
-    onDoubleClick: handleDoubleClick
-  }, isEditing ? /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: editedLabel,
-    onChange: handleLabelChange,
-    onBlur: handleLabelSubmit,
-    onKeyDown: handleLabelKeyDown,
-    autoFocus: true,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      outline: '2px solid #2196F3',
-      textAlign: 'center',
-      fontSize: '11px',
-      width: '100%',
-      padding: '2px'
-    },
-    className: "nodrag"
-  }) : data.label)), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "target",
-    position: Position.Left
-  }), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "source",
-    position: Position.Right
-  }));
-};
-
-const PentagonNode = ({
-  data,
-  selected,
-  style = {},
-  id
-}) => {
-  const defaultStyle = nodeDefaults.pentagon;
-  const styleOverrides = data.styleOverrides || {};
-  const nodeStyle = {
-    ...defaultStyle,
-    ...styleOverrides
-  };
-  const [isResizing, setIsResizing] = reactExports.useState(false);
-  const [isEditing, setIsEditing] = reactExports.useState(false);
-  const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
-  const handleDoubleClick = e => {
-    e.stopPropagation();
-    setIsEditing(true);
-    setEditedLabel(data.label);
-  };
-  const handleLabelChange = e => {
-    setEditedLabel(e.target.value);
-  };
-  const handleLabelSubmit = () => {
-    if (editedLabel.trim() && data.onLabelChange) {
-      data.onLabelChange(id, editedLabel.trim());
-    }
-    setIsEditing(false);
-  };
-  const handleLabelKeyDown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLabelSubmit();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditedLabel(data.label);
-    }
-  };
-
-  // Calculate size based on text length or custom width from styleOverrides
-  const textLength = (data.label || '').length;
-  const estimatedWidth = Math.max(70, textLength * 8 + 20);
-  const customWidth = styleOverrides.customWidth ? parseFloat(styleOverrides.customWidth) : null;
-  const size = customWidth || estimatedWidth;
-  const handleResizeStart = e => {
-    e.stopPropagation();
-    setIsResizing(true);
-    const startX = e.clientX;
-    e.clientY;
-    const startWidth = size;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 11;
-    const handleMouseMove = moveEvent => {
-      const deltaX = moveEvent.clientX - startX;
-      const newWidth = Math.max(70, startWidth + deltaX);
-      const scale = newWidth / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
-          customWidth: `${newWidth}px`,
-          fontSize: `${newFontSize}px`
-        });
-      }
-    };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-  const background = nodeStyle.background || '#e0f2f1';
-  const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
-  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -6,
-      left: -6,
-      right: -6,
-      bottom: -6,
-      border: '2px solid #2196F3',
-      borderRadius: '6px',
-      pointerEvents: 'none',
-      zIndex: -1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      right: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "nodrag",
-    onMouseDown: handleResizeStart,
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      right: -4,
-      width: 10,
-      height: 10,
-      background: '#FF9800',
-      border: '1px solid white',
-      borderRadius: '2px',
-      cursor: 'nwse-resize',
-      pointerEvents: 'auto',
-      zIndex: 20
-    },
-    title: "Resize"
-  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
-    onClick: e => {
-      e.stopPropagation();
-      data.onOpenStyleInspector();
-    },
-    style: {
-      position: 'absolute',
-      top: -12,
-      left: -12,
-      width: 24,
-      height: 24,
-      background: '#2196F3',
-      border: '2px solid white',
-      borderRadius: '50%',
-      cursor: 'pointer',
-      pointerEvents: 'auto',
-      zIndex: 10,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '14px',
-      color: 'white',
-      fontWeight: 'bold',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-    },
-    title: "Open Style Inspector"
-  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'relative',
-      width: `${size}px`,
-      height: '70px'
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: size,
-    height: "70",
-    viewBox: "0 0 100 100",
-    preserveAspectRatio: "none",
-    style: {
-      position: 'absolute',
-      top: 0,
-      left: 0
-    }
-  }, /*#__PURE__*/React.createElement("polygon", {
-    points: "50,10 90,40 75,85 25,85 10,40",
-    fill: background,
-    stroke: borderColor,
-    strokeWidth: "2"
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      textAlign: 'center',
-      maxWidth: `${size - 20}px`,
-      fontSize: '11px',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
-    },
-    onDoubleClick: handleDoubleClick
-  }, isEditing ? /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: editedLabel,
-    onChange: handleLabelChange,
-    onBlur: handleLabelSubmit,
-    onKeyDown: handleLabelKeyDown,
-    autoFocus: true,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      outline: '2px solid #2196F3',
-      textAlign: 'center',
-      fontSize: '11px',
-      width: '100%',
-      padding: '2px'
-    },
-    className: "nodrag"
-  }) : data.label)), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "target",
-    position: Position.Left
-  }), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "source",
-    position: Position.Right
-  }));
-};
-
-const HexagonNode = ({
-  data,
-  selected,
-  style = {},
-  id
-}) => {
-  const defaultStyle = nodeDefaults.hexagon;
-  const styleOverrides = data.styleOverrides || {};
-  const nodeStyle = {
-    ...defaultStyle,
-    ...styleOverrides
-  };
-  const [isResizing, setIsResizing] = reactExports.useState(false);
-  const [isEditing, setIsEditing] = reactExports.useState(false);
-  const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
-  const handleDoubleClick = e => {
-    e.stopPropagation();
-    setIsEditing(true);
-    setEditedLabel(data.label);
-  };
-  const handleLabelChange = e => {
-    setEditedLabel(e.target.value);
-  };
-  const handleLabelSubmit = () => {
-    if (editedLabel.trim() && data.onLabelChange) {
-      data.onLabelChange(id, editedLabel.trim());
-    }
-    setIsEditing(false);
-  };
-  const handleLabelKeyDown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLabelSubmit();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditedLabel(data.label);
-    }
-  };
-
-  // Calculate size based on text length or custom width from styleOverrides
-  const textLength = (data.label || '').length;
-  const estimatedWidth = Math.max(70, textLength * 8 + 20);
-  const customWidth = styleOverrides.customWidth ? parseFloat(styleOverrides.customWidth) : null;
-  const size = customWidth || estimatedWidth;
-  const handleResizeStart = e => {
-    e.stopPropagation();
-    setIsResizing(true);
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = size;
-    const startFontSize = parseFloat(nodeStyle.fontSize) || 11;
-    const handleMouseMove = moveEvent => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      const delta = Math.max(deltaX, deltaY); // Use larger delta for uniform scaling
-      const newWidth = Math.max(70, startWidth + delta);
-      const scale = newWidth / startWidth;
-      const newFontSize = Math.max(8, Math.min(24, startFontSize * scale));
-      if (data.onStyleChange) {
-        data.onStyleChange(id, {
-          customWidth: `${newWidth}px`,
-          fontSize: `${newFontSize}px`
-        });
-      }
-    };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-  const background = nodeStyle.background || '#fce4ec';
-  const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
-  return /*#__PURE__*/React.createElement(React.Fragment, null, selected && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -6,
-      left: -6,
-      right: -6,
-      bottom: -6,
-      border: '2px solid #2196F3',
-      borderRadius: '6px',
-      pointerEvents: 'none',
-      zIndex: -1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -4,
-      right: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      left: -4,
-      width: 8,
-      height: 8,
-      background: '#2196F3',
-      border: '1px solid white',
-      borderRadius: '2px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "nodrag",
-    onMouseDown: handleResizeStart,
-    style: {
-      position: 'absolute',
-      bottom: -4,
-      right: -4,
-      width: 10,
-      height: 10,
-      background: '#FF9800',
-      border: '1px solid white',
-      borderRadius: '2px',
-      cursor: 'nwse-resize',
-      pointerEvents: 'auto',
-      zIndex: 20
-    },
-    title: "Resize"
-  })), selected && data.onOpenStyleInspector && /*#__PURE__*/React.createElement("div", {
-    onClick: e => {
-      e.stopPropagation();
-      data.onOpenStyleInspector();
-    },
-    style: {
-      position: 'absolute',
-      top: -12,
-      left: -12,
-      width: 24,
-      height: 24,
-      background: '#2196F3',
-      border: '2px solid white',
-      borderRadius: '50%',
-      cursor: 'pointer',
-      pointerEvents: 'auto',
-      zIndex: 10,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '14px',
-      color: 'white',
-      fontWeight: 'bold',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-    },
-    title: "Open Style Inspector"
-  }, "\u2699"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'relative',
-      width: `${size}px`,
-      height: '70px'
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: size,
-    height: "70",
-    viewBox: "0 0 100 100",
-    preserveAspectRatio: "none",
-    style: {
-      position: 'absolute',
-      top: 0,
-      left: 0
-    }
-  }, /*#__PURE__*/React.createElement("polygon", {
-    points: "25,10 75,10 95,50 75,90 25,90 5,50",
-    fill: background,
-    stroke: borderColor,
-    strokeWidth: "2"
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      textAlign: 'center',
-      maxWidth: `${size - 20}px`,
-      fontSize: '11px',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
-    },
-    onDoubleClick: handleDoubleClick
-  }, isEditing ? /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: editedLabel,
-    onChange: handleLabelChange,
-    onBlur: handleLabelSubmit,
-    onKeyDown: handleLabelKeyDown,
-    autoFocus: true,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      outline: '2px solid #2196F3',
-      textAlign: 'center',
-      fontSize: '11px',
-      width: '100%',
-      padding: '2px'
-    },
-    className: "nodrag"
-  }) : data.label)), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "target",
-    position: Position.Left
-  }), /*#__PURE__*/React.createElement(Handle$1, {
-    type: "source",
-    position: Position.Right
-  }));
+  });
 };
 
 const StyleInspector = ({
@@ -27066,6 +26007,7 @@ const StyleInspector = ({
 const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
+  onExportJSON,
   onClearCanvas,
   onSetInput,
   defaultStyles = {
@@ -27081,6 +26023,7 @@ const SettingsPanel = ({
     y: null
   });
   const [isDragging, setIsDragging] = reactExports.useState(false);
+  const [showCopied, setShowCopied] = reactExports.useState(false);
   const dragOffset = reactExports.useRef({
     x: 0,
     y: 0
@@ -27336,7 +26279,11 @@ const SettingsPanel = ({
       borderRadius: 4,
       textAlign: 'center'
     }
-  }))), /*#__PURE__*/React.createElement("button", {
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("button", {
     onClick: e => {
       e.stopPropagation();
       if (onExportPNG) onExportPNG();
@@ -27365,6 +26312,37 @@ const SettingsPanel = ({
   }, "download"), "Export to PNG"), /*#__PURE__*/React.createElement("button", {
     onClick: e => {
       e.stopPropagation();
+      if (onExportJSON) {
+        onExportJSON();
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 2000);
+      }
+    },
+    style: {
+      width: '100%',
+      padding: '10px 12px',
+      background: '#f5f5f5',
+      color: '#333',
+      border: '1px solid #ddd',
+      borderRadius: 6,
+      cursor: 'pointer',
+      fontSize: 13,
+      fontWeight: 600,
+      marginBottom: 8,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      position: 'relative'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined",
+    style: {
+      fontSize: 18
+    }
+  }, "code"), showCopied ? 'Copied to clipboard!' : 'Export to JSON'), /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
       if (onClearCanvas) onClearCanvas();
     },
     style: {
@@ -27387,7 +26365,7 @@ const SettingsPanel = ({
     style: {
       fontSize: 18
     }
-  }, "delete"), "Clear Canvas"), /*#__PURE__*/React.createElement("div", {
+  }, "delete"), "Clear Canvas")), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 16,
       padding: 12,
@@ -27404,7 +26382,7 @@ const SettingsPanel = ({
       textTransform: 'uppercase',
       letterSpacing: 0.5
     }
-  }, "Examples"), ['square->circle', 'hello-label->world', 'foo(shape:hexagon)->bar(shape:diamond)'].map((example, i) => /*#__PURE__*/React.createElement("div", {
+  }, "Examples"), ['square->circle', 'hello-label->world', 'rectangle->square->circle'].map((example, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     onClick: () => onSetInput && onSetInput(example),
     style: {
@@ -27486,12 +26464,9 @@ const SelfLoopEdge = ({
 
 const nodeTypes = {
   rectangle: RectangleNode,
-  diamond: DiamondNode,
   circle: CircleNode,
   square: SquareNode,
-  star: StarNode,
-  pentagon: PentagonNode,
-  hexagon: HexagonNode,
+  diamond: DiamondNode,
   default: RectangleNode // Fallback to rectangle
 };
 const edgeTypes = {
@@ -27534,13 +26509,35 @@ const FlowDiagram = ({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [isModifierKeyPressed, setIsModifierKeyPressed] = reactExports.useState(false);
+
+  // Handle JSON export
+  const handleExportJSON = reactExports.useCallback(() => {
+    const exportData = {
+      nodes: nodes.map(node => ({
+        id: node.id,
+        type: node.type,
+        label: node.data.label,
+        position: node.position,
+        styleOverrides: node.data.styleOverrides
+      })),
+      edges: edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label,
+        type: edge.type
+      }))
+    };
+    const jsonString = JSON.stringify(exportData, null, 2);
+    navigator.clipboard.writeText(jsonString);
+  }, [nodes, edges]);
   const [isSpacePressed, setIsSpacePressed] = reactExports.useState(false);
   const [selectedNode, setSelectedNode] = reactExports.useState(null);
   const [showStyleInspector, setShowStyleInspector] = reactExports.useState(false);
   const [defaultStyles, setDefaultStyles] = reactExports.useState({
     fillColor: '#ffffff',
     borderColor: '#000000',
-    borderWidth: 2
+    borderWidth: 1
   });
   const reactFlowInstance = reactExports.useRef(null);
 
@@ -27570,6 +26567,9 @@ const FlowDiagram = ({
             style,
             ...nodeWithoutStyle
           } = newNode;
+          // Get default fontSize for this node type
+          const nodeTypeDefaults = nodeDefaults[newNode.type] || nodeDefaults.rectangle;
+          const defaultFontSize = nodeTypeDefaults.fontSize || '11px';
           return {
             ...nodeWithoutStyle,
             data: {
@@ -27577,7 +26577,8 @@ const FlowDiagram = ({
               styleOverrides: {
                 backgroundColor: defaultStyles.fillColor,
                 borderColor: defaultStyles.borderColor,
-                borderWidth: defaultStyles.borderWidth
+                borderWidth: defaultStyles.borderWidth,
+                fontSize: defaultFontSize
               }
             }
           };
@@ -27589,7 +26590,16 @@ const FlowDiagram = ({
 
   // Update edges when initialEdges changes
   reactExports.useEffect(() => {
-    setEdges(initialEdges);
+    setEdges(currentEdges => {
+      // Create a map of initial edges by ID
+      const initialEdgesMap = new Map(initialEdges.map(e => [e.id, e]));
+
+      // Keep manually created edges (ones not in initialEdges)
+      const manualEdges = currentEdges.filter(edge => !initialEdgesMap.has(edge.id));
+
+      // Merge: initialEdges + manual edges
+      return [...initialEdges, ...manualEdges];
+    });
   }, [initialEdges, setEdges]);
 
   // Log JSON representation whenever nodes or edges change
@@ -27806,6 +26816,7 @@ const FlowDiagram = ({
     defaultStyles: defaultStyles,
     onDefaultStyleChange: handleDefaultStyleChange,
     onExportPNG: onExportPNG,
+    onExportJSON: handleExportJSON,
     onClearCanvas: onClearCanvas,
     onSetInput: onSetInput
   }), enableStyleInspector && selectedNode && showStyleInspector && /*#__PURE__*/React.createElement(StyleInspector, {
@@ -43090,24 +42101,26 @@ class DiagramParser {
       'circle': 'circle',
       'square': 'square',
       'rectangle': 'rectangle',
-      'diamond': 'diamond',
-      'star': 'star',
-      'pentagon': 'pentagon',
-      'hexagon': 'hexagon'
+      'diamond': 'diamond'
     };
   }
   parse(input) {
+    console.log('[DiagramParser] *** NEW REFACTORED CODE LOADED ***');
     console.log('[DiagramParser] Starting parse with input:', input);
     this.nodes.clear();
     this.edges = [];
     this.nodeOrder = []; // Reset node order tracking
 
-    const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    console.log('[DiagramParser] Lines to process:', lines);
-    lines.forEach((line, index) => {
-      console.log(`[DiagramParser] Processing line ${index}: "${line}"`);
-      this.parseLine(line);
-    });
+    // Check if input contains arrows
+    if (input.includes('->') || input.includes('<-')) {
+      console.log('[DiagramParser] Contains arrows - using parseArrowSyntax (supports multi-line labels)');
+      // Parse as arrow syntax - this allows multi-line node labels
+      this.parseArrowSyntax(input);
+    } else {
+      console.log('[DiagramParser] No arrows - using parseStandaloneNodes');
+      // No arrows - split by lines and create standalone nodes
+      this.parseStandaloneNodes(input);
+    }
     const result = {
       nodes: Array.from(this.nodes.values()),
       edges: this.edges
@@ -43115,46 +42128,39 @@ class DiagramParser {
     console.log('[DiagramParser] Parse complete:', result);
     return result;
   }
-  parseLine(line) {
-    // Check if line contains any arrows
-    if (line.includes('->') || line.includes('<-')) {
-      this.parseArrowLine(line);
-    } else {
-      // Single node - create it
+  parseStandaloneNodes(input) {
+    const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    console.log('[DiagramParser] Lines to process (no arrows):', lines);
+    lines.forEach((line, index) => {
+      console.log(`[DiagramParser] Processing line ${index}: "${line}"`);
       this.ensureNode(line);
-      console.log(`[DiagramParser] Added standalone node: ${line}`);
-    }
+    });
   }
-  parseArrowLine(line) {
-    // Regular expression to match arrow patterns
-    // Matches: <-label->, <->, -label->, ->, <-
+  parseArrowSyntax(input) {
+    const arrows = this.findArrows(input);
+    if (arrows.length === 0) return;
+    const nodeLabels = this.extractNodeLabels(input, arrows);
+    const nodeNames = nodeLabels.map(label => this.ensureNode(label));
+    this.createEdgesFromArrows(arrows, nodeNames);
+  }
+  findArrows(input) {
     const arrowPattern = /<-([^<>]+)->|<->|-([^-<>]+)->|->|<-/g;
     const arrows = [];
     let match;
-
-    // Find all arrows and their positions
-    while ((match = arrowPattern.exec(line)) !== null) {
+    while ((match = arrowPattern.exec(input)) !== null) {
       const arrowType = match[0];
       let edgeLabel = null;
-      let direction = 'forward'; // forward, backward, or bidirectional
-
+      let direction = 'forward';
       if (match[1]) {
-        // Bidirectional with label: <-label->
         edgeLabel = match[1].trim();
         direction = 'bidirectional';
       } else if (match[2]) {
-        // Forward with label: -label->
         edgeLabel = match[2].trim();
         direction = 'forward';
       } else if (arrowType === '<->') {
-        // Bidirectional without label
         direction = 'bidirectional';
       } else if (arrowType === '<-') {
-        // Backward arrow
         direction = 'backward';
-      } else if (arrowType === '->') {
-        // Forward arrow
-        direction = 'forward';
       }
       arrows.push({
         index: match.index,
@@ -43164,124 +42170,72 @@ class DiagramParser {
         raw: arrowType
       });
     }
-    if (arrows.length === 0) {
-      // No arrows found, treat as single node
-      this.ensureNode(line);
-      return;
-    }
-
-    // Extract node labels between arrows
-    let lastIndex = 0;
+    return arrows;
+  }
+  extractNodeLabels(input, arrows) {
     const nodes = [];
+    let lastIndex = 0;
     arrows.forEach((arrow, i) => {
-      // Get text before this arrow
-      const nodeLabel = line.substring(lastIndex, arrow.index).trim();
+      const nodeLabel = input.substring(lastIndex, arrow.index).trim();
       if (nodeLabel) {
         nodes.push(nodeLabel);
       }
-
-      // If this is the last arrow, get text after it
       if (i === arrows.length - 1) {
-        const finalLabel = line.substring(arrow.index + arrow.length).trim();
+        const finalLabel = input.substring(arrow.index + arrow.length).trim();
         if (finalLabel) {
           nodes.push(finalLabel);
         }
       }
       lastIndex = arrow.index + arrow.length;
     });
-
-    // Create nodes and get their clean names
-    const nodeNames = nodes.map(label => this.ensureNode(label));
-
-    // Create edges based on arrow directions
+    return nodes;
+  }
+  createEdgesFromArrows(arrows, nodeNames) {
     for (let i = 0; i < arrows.length; i++) {
       const arrow = arrows[i];
       const sourceName = nodeNames[i];
       const targetName = nodeNames[i + 1];
       if (!sourceName || !targetName) continue;
       if (arrow.direction === 'forward') {
-        // source -> target
-        this.edges.push({
-          id: `${sourceName}-${targetName}-${this.edges.length}`,
-          source: sourceName,
-          target: targetName,
-          label: arrow.edgeLabel
-        });
+        this.createEdge(sourceName, targetName, arrow.edgeLabel);
         console.log(`[DiagramParser] Created edge: ${sourceName} -> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       } else if (arrow.direction === 'backward') {
-        // target <- source (swap them)
-        this.edges.push({
-          id: `${targetName}-${sourceName}-${this.edges.length}`,
-          source: targetName,
-          target: sourceName,
-          label: arrow.edgeLabel
-        });
+        this.createEdge(targetName, sourceName, arrow.edgeLabel);
         console.log(`[DiagramParser] Created edge: ${targetName} <- ${sourceName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       } else if (arrow.direction === 'bidirectional') {
-        // source <-> target (create both edges)
-        this.edges.push({
-          id: `${sourceName}-${targetName}-${this.edges.length}`,
-          source: sourceName,
-          target: targetName,
-          label: arrow.edgeLabel
-        });
-        this.edges.push({
-          id: `${targetName}-${sourceName}-${this.edges.length}`,
-          source: targetName,
-          target: sourceName,
-          label: arrow.edgeLabel
-        });
+        this.createEdge(sourceName, targetName, arrow.edgeLabel);
+        this.createEdge(targetName, sourceName, arrow.edgeLabel);
         console.log(`[DiagramParser] Created bidirectional edge: ${sourceName} <-> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       }
     }
   }
-
-  /**
-   * Parse node label, extracting shape type if specified
-   * Supports: "foo(shape:circle)" -> {name: "foo", type: "circle"}
-   */
-  parseNodeLabel(label) {
-    const trimmed = label.trim();
-
-    // Match pattern: name(shape:type)
-    const match = trimmed.match(/^(.+?)\(shape:\s*(\w+)\)$/i);
-    if (match) {
-      const name = match[1].trim();
-      const shapeType = match[2].toLowerCase();
-      // Validate shape type
-      const type = this.shapeKeywords[shapeType] || 'rectangle';
-      return {
-        name,
-        type
-      };
-    }
-
-    // No explicit shape, use label-based detection
-    const lowerLabel = trimmed.toLowerCase();
-    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
-    return {
-      name: trimmed,
-      type
-    };
+  createEdge(source, target, label) {
+    this.edges.push({
+      id: `${source}-${target}-${this.edges.length}`,
+      source,
+      target,
+      label
+    });
   }
   ensureNode(label) {
-    const {
-      name,
-      type
-    } = this.parseNodeLabel(label);
-    if (!this.nodes.has(name)) {
+    const trimmed = label.trim();
+
+    // Detect shape type based on the label text itself
+    const lowerLabel = trimmed.toLowerCase();
+    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
+    if (!this.nodes.has(trimmed)) {
       const node = {
-        id: name,
-        label: name,
+        id: trimmed,
+        label: trimmed,
         type: type
       };
-      this.nodes.set(name, node);
-      this.nodeOrder.push(name); // Track order of appearance
-      console.log(`[DiagramParser] Created node: ${name} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
+      this.nodes.set(trimmed, node);
+      this.nodeOrder.push(trimmed); // Track order of appearance
+      console.log(`[DiagramParser] Created node: ${trimmed} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
     } else {
-      console.log(`[DiagramParser] Node already exists: ${name}`);
+      console.log(`[DiagramParser] Node already exists: ${trimmed}`);
     }
-    return name; // Return the node ID for edge creation
+    return trimmed; // Return the node ID for edge creation
   }
   layoutGraph(nodes, edges) {
     // Position nodes based on their appearance order in the input

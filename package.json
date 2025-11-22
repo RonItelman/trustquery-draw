@@ -31,6 +31,7 @@
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-replace": "^6.0.3",
+    "concurrently": "^9.2.1",
     "http-server": "^14.1.1",
     "rollup": "^4.9.6",
     "rollup-plugin-postcss": "^4.0.2"
@@ -38,7 +39,7 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "dev": "http-server -p 3002 -o /examples/basic.html",
+    "dev": "concurrently \"rollup -c -w\" \"http-server -p 3002 -o /examples/basic.html\"",
     "start": "npm run dev",
     "prepublishOnly": "npm run build"
   },

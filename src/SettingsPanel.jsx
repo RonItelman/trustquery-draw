@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback } from 'react';
 const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
+  onExportJSON,
   onClearCanvas,
   onSetInput,
   defaultStyles = {
@@ -15,6 +16,7 @@ const SettingsPanel = ({
   const [styles, setStyles] = useState(defaultStyles);
   const [position, setPosition] = useState({ x: null, y: null });
   const [isDragging, setIsDragging] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const panelRef = useRef(null);
 
@@ -267,58 +269,93 @@ const SettingsPanel = ({
             </div>
           </div>
 
-          {/* Export PNG Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onExportPNG) onExportPNG();
-            }}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              background: '#f5f5f5',
-              color: '#333',
-              border: '1px solid #ddd',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
-              marginBottom: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
-            Export to PNG
-          </button>
+          {/* Action Buttons Container */}
+          <div style={{ marginBottom: 16 }}>
+            {/* Export PNG Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onExportPNG) onExportPNG();
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
+              Export to PNG
+            </button>
 
-          {/* Clear Canvas Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onClearCanvas) onClearCanvas();
-            }}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              background: '#f5f5f5',
-              color: '#333',
-              border: '1px solid #ddd',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
-            Clear Canvas
-          </button>
+            {/* Export JSON Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onExportJSON) {
+                  onExportJSON();
+                  setShowCopied(true);
+                  setTimeout(() => setShowCopied(false), 2000);
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                position: 'relative',
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>code</span>
+              {showCopied ? 'Copied to clipboard!' : 'Export to JSON'}
+            </button>
+
+            {/* Clear Canvas Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onClearCanvas) onClearCanvas();
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
+              Clear Canvas
+            </button>
+          </div>
 
           {/* Help Examples */}
           <div style={{
@@ -339,7 +376,7 @@ const SettingsPanel = ({
             {[
               'square->circle',
               'hello-label->world',
-              'foo(shape:hexagon)->bar(shape:diamond)',
+              'rectangle->square->circle',
             ].map((example, i) => (
               <div
                 key={i}

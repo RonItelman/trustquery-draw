@@ -13,26 +13,27 @@ export class DiagramParser {
       'square': 'square',
       'rectangle': 'rectangle',
       'diamond': 'diamond',
-      'star': 'star',
-      'pentagon': 'pentagon',
-      'hexagon': 'hexagon',
     };
   }
 
   parse(input) {
+    console.log('[DiagramParser] *** NEW REFACTORED CODE LOADED ***');
     console.log('[DiagramParser] Starting parse with input:', input);
 
     this.nodes.clear();
     this.edges = [];
     this.nodeOrder = []; // Reset node order tracking
 
-    const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    console.log('[DiagramParser] Lines to process:', lines);
-
-    lines.forEach((line, index) => {
-      console.log(`[DiagramParser] Processing line ${index}: "${line}"`);
-      this.parseLine(line);
-    });
+    // Check if input contains arrows
+    if (input.includes('->') || input.includes('<-')) {
+      console.log('[DiagramParser] Contains arrows - using parseArrowSyntax (supports multi-line labels)');
+      // Parse as arrow syntax - this allows multi-line node labels
+      this.parseArrowSyntax(input);
+    } else {
+      console.log('[DiagramParser] No arrows - using parseStandaloneNodes');
+      // No arrows - split by lines and create standalone nodes
+      this.parseStandaloneNodes(input);
+    }
 
     const result = {
       nodes: Array.from(this.nodes.values()),
@@ -43,48 +44,46 @@ export class DiagramParser {
     return result;
   }
 
-  parseLine(line) {
-    // Check if line contains any arrows
-    if (line.includes('->') || line.includes('<-')) {
-      this.parseArrowLine(line);
-    } else {
-      // Single node - create it
+  parseStandaloneNodes(input) {
+    const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    console.log('[DiagramParser] Lines to process (no arrows):', lines);
+
+    lines.forEach((line, index) => {
+      console.log(`[DiagramParser] Processing line ${index}: "${line}"`);
       this.ensureNode(line);
-      console.log(`[DiagramParser] Added standalone node: ${line}`);
-    }
+    });
   }
 
-  parseArrowLine(line) {
-    // Regular expression to match arrow patterns
-    // Matches: <-label->, <->, -label->, ->, <-
-    const arrowPattern = /<-([^<>]+)->|<->|-([^-<>]+)->|->|<-/g;
+  parseArrowSyntax(input) {
+    const arrows = this.findArrows(input);
+    if (arrows.length === 0) return;
 
+    const nodeLabels = this.extractNodeLabels(input, arrows);
+    const nodeNames = nodeLabels.map(label => this.ensureNode(label));
+
+    this.createEdgesFromArrows(arrows, nodeNames);
+  }
+
+  findArrows(input) {
+    const arrowPattern = /<-([^<>]+)->|<->|-([^-<>]+)->|->|<-/g;
     const arrows = [];
     let match;
 
-    // Find all arrows and their positions
-    while ((match = arrowPattern.exec(line)) !== null) {
+    while ((match = arrowPattern.exec(input)) !== null) {
       const arrowType = match[0];
       let edgeLabel = null;
-      let direction = 'forward'; // forward, backward, or bidirectional
+      let direction = 'forward';
 
       if (match[1]) {
-        // Bidirectional with label: <-label->
         edgeLabel = match[1].trim();
         direction = 'bidirectional';
       } else if (match[2]) {
-        // Forward with label: -label->
         edgeLabel = match[2].trim();
         direction = 'forward';
       } else if (arrowType === '<->') {
-        // Bidirectional without label
         direction = 'bidirectional';
       } else if (arrowType === '<-') {
-        // Backward arrow
         direction = 'backward';
-      } else if (arrowType === '->') {
-        // Forward arrow
-        direction = 'forward';
       }
 
       arrows.push({
@@ -96,26 +95,21 @@ export class DiagramParser {
       });
     }
 
-    if (arrows.length === 0) {
-      // No arrows found, treat as single node
-      this.ensureNode(line);
-      return;
-    }
+    return arrows;
+  }
 
-    // Extract node labels between arrows
-    let lastIndex = 0;
+  extractNodeLabels(input, arrows) {
     const nodes = [];
+    let lastIndex = 0;
 
     arrows.forEach((arrow, i) => {
-      // Get text before this arrow
-      const nodeLabel = line.substring(lastIndex, arrow.index).trim();
+      const nodeLabel = input.substring(lastIndex, arrow.index).trim();
       if (nodeLabel) {
         nodes.push(nodeLabel);
       }
 
-      // If this is the last arrow, get text after it
       if (i === arrows.length - 1) {
-        const finalLabel = line.substring(arrow.index + arrow.length).trim();
+        const finalLabel = input.substring(arrow.index + arrow.length).trim();
         if (finalLabel) {
           nodes.push(finalLabel);
         }
@@ -124,10 +118,10 @@ export class DiagramParser {
       lastIndex = arrow.index + arrow.length;
     });
 
-    // Create nodes and get their clean names
-    const nodeNames = nodes.map(label => this.ensureNode(label));
+    return nodes;
+  }
 
-    // Create edges based on arrow directions
+  createEdgesFromArrows(arrows, nodeNames) {
     for (let i = 0; i < arrows.length; i++) {
       const arrow = arrows[i];
       const sourceName = nodeNames[i];
@@ -136,86 +130,51 @@ export class DiagramParser {
       if (!sourceName || !targetName) continue;
 
       if (arrow.direction === 'forward') {
-        // source -> target
-        this.edges.push({
-          id: `${sourceName}-${targetName}-${this.edges.length}`,
-          source: sourceName,
-          target: targetName,
-          label: arrow.edgeLabel,
-        });
+        this.createEdge(sourceName, targetName, arrow.edgeLabel);
         console.log(`[DiagramParser] Created edge: ${sourceName} -> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
-
       } else if (arrow.direction === 'backward') {
-        // target <- source (swap them)
-        this.edges.push({
-          id: `${targetName}-${sourceName}-${this.edges.length}`,
-          source: targetName,
-          target: sourceName,
-          label: arrow.edgeLabel,
-        });
+        this.createEdge(targetName, sourceName, arrow.edgeLabel);
         console.log(`[DiagramParser] Created edge: ${targetName} <- ${sourceName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
-
       } else if (arrow.direction === 'bidirectional') {
-        // source <-> target (create both edges)
-        this.edges.push({
-          id: `${sourceName}-${targetName}-${this.edges.length}`,
-          source: sourceName,
-          target: targetName,
-          label: arrow.edgeLabel,
-        });
-        this.edges.push({
-          id: `${targetName}-${sourceName}-${this.edges.length}`,
-          source: targetName,
-          target: sourceName,
-          label: arrow.edgeLabel,
-        });
+        this.createEdge(sourceName, targetName, arrow.edgeLabel);
+        this.createEdge(targetName, sourceName, arrow.edgeLabel);
         console.log(`[DiagramParser] Created bidirectional edge: ${sourceName} <-> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
       }
     }
   }
 
-  /**
-   * Parse node label, extracting shape type if specified
-   * Supports: "foo(shape:circle)" -> {name: "foo", type: "circle"}
-   */
-  parseNodeLabel(label) {
-    const trimmed = label.trim();
-
-    // Match pattern: name(shape:type)
-    const match = trimmed.match(/^(.+?)\(shape:\s*(\w+)\)$/i);
-
-    if (match) {
-      const name = match[1].trim();
-      const shapeType = match[2].toLowerCase();
-      // Validate shape type
-      const type = this.shapeKeywords[shapeType] || 'rectangle';
-      return { name, type };
-    }
-
-    // No explicit shape, use label-based detection
-    const lowerLabel = trimmed.toLowerCase();
-    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
-    return { name: trimmed, type };
+  createEdge(source, target, label) {
+    this.edges.push({
+      id: `${source}-${target}-${this.edges.length}`,
+      source,
+      target,
+      label,
+    });
   }
 
-  ensureNode(label) {
-    const { name, type } = this.parseNodeLabel(label);
 
-    if (!this.nodes.has(name)) {
+  ensureNode(label) {
+    const trimmed = label.trim();
+
+    // Detect shape type based on the label text itself
+    const lowerLabel = trimmed.toLowerCase();
+    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
+
+    if (!this.nodes.has(trimmed)) {
       const node = {
-        id: name,
-        label: name,
+        id: trimmed,
+        label: trimmed,
         type: type,
       };
 
-      this.nodes.set(name, node);
-      this.nodeOrder.push(name); // Track order of appearance
-      console.log(`[DiagramParser] Created node: ${name} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
+      this.nodes.set(trimmed, node);
+      this.nodeOrder.push(trimmed); // Track order of appearance
+      console.log(`[DiagramParser] Created node: ${trimmed} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
     } else {
-      console.log(`[DiagramParser] Node already exists: ${name}`);
+      console.log(`[DiagramParser] Node already exists: ${trimmed}`);
     }
 
-    return name; // Return the node ID for edge creation
+    return trimmed; // Return the node ID for edge creation
   }
 
   layoutGraph(nodes, edges) {
