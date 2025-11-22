@@ -41317,309 +41317,446 @@ class DiagramImporter {
 }
 
 /**
- * Layout Algorithms - Position nodes according to different patterns
- */
-
-const SPACING = {
-  horizontal: 200,
-  vertical: 150
-};
-
-/**
- * Decision Layout
+ * Decision Layout Handler
  * Finds diamond nodes and arranges their connected nodes:
  * - Input node to the left of diamond
  * - True/Yes node to the right of diamond
  * - False/No node below the diamond
- *
- * @param {Array} nodes - Current nodes
- * @param {Array} edges - Current edges
- * @returns {Array} Nodes with updated positions
  */
-const applyDecisionLayout = (nodes, edges) => {
-  console.log('[DecisionLayout] Starting layout with nodes:', nodes.length, 'edges:', edges.length);
 
-  // Find diamond nodes
-  const diamondNodes = nodes.filter(n => n.type === 'diamond');
-  if (diamondNodes.length === 0) {
-    console.log('[DecisionLayout] No diamond nodes found');
-    return nodes;
+const SPACING$1 = {
+  horizontal: 200,
+  vertical: 150
+};
+class DecisionLayout {
+  /**
+   * Apply decision layout to nodes
+   * @param {Array} nodes - Current nodes
+   * @param {Array} edges - Current edges
+   * @returns {Array} Nodes with updated positions
+   */
+  static apply(nodes, edges) {
+    console.log('[DecisionLayout] Starting layout with nodes:', nodes.length, 'edges:', edges.length);
+
+    // Find diamond nodes
+    const diamondNodes = nodes.filter(n => n.type === 'diamond');
+    if (diamondNodes.length === 0) {
+      console.log('[DecisionLayout] No diamond nodes found');
+      return nodes;
+    }
+
+    // Create a copy of nodes to modify
+    const updatedNodes = [...nodes];
+    const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
+
+    // Center alignment offset: diamond (100px) vs rectangle (60px) = 20px difference
+    const CENTER_OFFSET = 20;
+    diamondNodes.forEach(diamond => {
+      console.log('[DecisionLayout] Processing diamond:', diamond.id);
+
+      // Find edges connected to this diamond
+      const incomingEdges = edges.filter(e => e.target === diamond.id);
+      const outgoingEdges = edges.filter(e => e.source === diamond.id);
+      console.log('[DecisionLayout] Incoming edges:', incomingEdges.length, 'Outgoing:', outgoingEdges.length);
+
+      // Position diamond at a base position
+      const diamondX = 300;
+      const diamondY = 200;
+      diamond.position = {
+        x: diamondX,
+        y: diamondY
+      };
+
+      // Position input node(s) to the left (center-aligned with diamond)
+      incomingEdges.forEach((edge, i) => {
+        const inputNode = nodeMap.get(edge.source);
+        if (inputNode) {
+          inputNode.position = {
+            x: diamondX - SPACING$1.horizontal,
+            y: diamondY + CENTER_OFFSET // Offset down to align centers
+          };
+          console.log('[DecisionLayout] Positioned input node:', inputNode.id, 'at', inputNode.position);
+        }
+      });
+
+      // Position output nodes based on edge labels
+      outgoingEdges.forEach(edge => {
+        const outputNode = nodeMap.get(edge.target);
+        if (!outputNode) return;
+        const label = (edge.label || '').toLowerCase();
+        if (label.includes('yes') || label.includes('true') || label === 'y' || label === 't') {
+          // True/Yes - position to the right (center-aligned)
+          outputNode.position = {
+            x: diamondX + SPACING$1.horizontal,
+            y: diamondY + CENTER_OFFSET // Offset down to align centers
+          };
+          console.log('[DecisionLayout] Positioned TRUE node:', outputNode.id, 'at', outputNode.position);
+        } else if (label.includes('no') || label.includes('false') || label === 'n' || label === 'f') {
+          // False/No - position below (center-aligned horizontally)
+          outputNode.position = {
+            x: diamondX,
+            y: diamondY + SPACING$1.vertical + CENTER_OFFSET // Also offset for consistency
+          };
+          console.log('[DecisionLayout] Positioned FALSE node:', outputNode.id, 'at', outputNode.position);
+        } else {
+          // No label or unknown - position first to right, second below
+          const isFirstOutput = outgoingEdges.indexOf(edge) === 0;
+          outputNode.position = isFirstOutput ? {
+            x: diamondX + SPACING$1.horizontal,
+            y: diamondY + CENTER_OFFSET
+          } : {
+            x: diamondX,
+            y: diamondY + SPACING$1.vertical + CENTER_OFFSET
+          };
+          console.log('[DecisionLayout] Positioned unlabeled node:', outputNode.id, 'at', outputNode.position);
+        }
+      });
+    });
+    return updatedNodes;
   }
+}
 
-  // Create a copy of nodes to modify
-  const updatedNodes = [...nodes];
-  const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
+/**
+ * Tree Layout Handler
+ * Arranges nodes in a hierarchical tree structure with roots at top
+ * - Uses width-aware spacing to prevent visual confusion
+ * - Centers parents above their children
+ * - Maintains proper gaps between subtrees
+ */
 
-  // Center alignment offset: diamond (100px) vs rectangle (60px) = 20px difference
-  const CENTER_OFFSET = 20;
-  diamondNodes.forEach(diamond => {
-    console.log('[DecisionLayout] Processing diamond:', diamond.id);
+const SPACING = {
+  horizontal: 150,
+  vertical: 120
+};
+class TreeLayout {
+  /**
+   * Apply tree layout to nodes
+   * @param {Array} nodes - Current nodes
+   * @param {Array} edges - Current edges
+   * @returns {Array} Nodes with updated positions
+   */
+  static apply(nodes, edges) {
+    console.log('[TreeLayout] Starting layout with nodes:', nodes.length, 'edges:', edges.length);
+    if (nodes.length === 0) return nodes;
 
-    // Find edges connected to this diamond
-    const incomingEdges = edges.filter(e => e.target === diamond.id);
-    const outgoingEdges = edges.filter(e => e.source === diamond.id);
-    console.log('[DecisionLayout] Incoming edges:', incomingEdges.length, 'Outgoing:', outgoingEdges.length);
+    // Create a copy of nodes to modify
+    const updatedNodes = [...nodes];
+    const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
 
-    // Position diamond at a base position
-    const diamondX = 300;
-    const diamondY = 200;
-    diamond.position = {
-      x: diamondX,
-      y: diamondY
+    // Find root nodes (nodes with no incoming edges)
+    const incomingCount = new Map();
+    nodes.forEach(n => incomingCount.set(n.id, 0));
+    edges.forEach(e => {
+      incomingCount.set(e.target, (incomingCount.get(e.target) || 0) + 1);
+    });
+    const roots = nodes.filter(n => incomingCount.get(n.id) === 0);
+    console.log('[TreeLayout] Found roots:', roots.map(r => r.id));
+    if (roots.length === 0) {
+      console.warn('[TreeLayout] No root nodes found, using first node');
+      roots.push(nodes[0]);
+    }
+
+    // Build tree structure: parent -> children mapping
+    const children = new Map();
+    edges.forEach(edge => {
+      if (!children.has(edge.source)) {
+        children.set(edge.source, []);
+      }
+      children.get(edge.source).push(edge.target);
+    });
+
+    // Calculate tree levels (depth-first traversal)
+    const levels = new Map(); // nodeId -> level
+    const visited = new Set();
+    const assignLevels = (nodeId, level) => {
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+      levels.set(nodeId, level);
+      const nodeChildren = children.get(nodeId) || [];
+      nodeChildren.forEach(childId => assignLevels(childId, level + 1));
+    };
+    roots.forEach(root => assignLevels(root.id, 0));
+
+    // Group nodes by level
+    const nodesByLevel = new Map();
+    levels.forEach((level, nodeId) => {
+      if (!nodesByLevel.has(level)) {
+        nodesByLevel.set(level, []);
+      }
+      nodesByLevel.get(level).push(nodeId);
+    });
+
+    // Layout parameters
+    const levelHeight = SPACING.vertical;
+    const nodeSpacing = SPACING.horizontal;
+    const startY = 50;
+
+    // Calculate positions level by level
+    nodesByLevel.forEach((nodeIds, level) => {
+      const totalWidth = (nodeIds.length - 1) * nodeSpacing;
+      const startX = 100 + (roots.length === 1 ? 200 : 0); // Center for single root
+
+      nodeIds.forEach((nodeId, index) => {
+        const node = nodeMap.get(nodeId);
+        if (node) {
+          node.position = {
+            x: startX + index * nodeSpacing - totalWidth / 2,
+            y: startY + level * levelHeight
+          };
+          console.log('[TreeLayout] Positioned', nodeId, 'at level', level, ':', node.position);
+        }
+      });
+    });
+
+    // Center parents above their children
+    const centerParents = nodeId => {
+      const nodeChildren = children.get(nodeId);
+      if (!nodeChildren || nodeChildren.length === 0) return;
+
+      // First, center all children
+      nodeChildren.forEach(childId => centerParents(childId));
+
+      // Calculate average X of children
+      const childNodes = nodeChildren.map(id => nodeMap.get(id)).filter(Boolean);
+      if (childNodes.length > 0) {
+        const avgX = childNodes.reduce((sum, child) => sum + child.position.x, 0) / childNodes.length;
+        const parent = nodeMap.get(nodeId);
+        if (parent) {
+          parent.position.x = avgX;
+        }
+      }
     };
 
-    // Position input node(s) to the left (center-aligned with diamond)
-    incomingEdges.forEach((edge, i) => {
-      const inputNode = nodeMap.get(edge.source);
-      if (inputNode) {
-        inputNode.position = {
-          x: diamondX - SPACING.horizontal,
-          y: diamondY + CENTER_OFFSET // Offset down to align centers
-        };
-        console.log('[DecisionLayout] Positioned input node:', inputNode.id, 'at', inputNode.position);
+    // First pass: center parents based on initial child positions
+    roots.forEach(root => centerParents(root.id));
+
+    // Helper: Estimate node width based on text length
+    const estimateNodeWidth = nodeId => {
+      // Approximate character width at 11px font size in system fonts: ~13px per char
+      // (Generous estimate to account for font metrics, kerning, whitespace, and browser rendering)
+      // Plus padding (12px left + 12px right = 24px) + border (1px * 2 = 2px)
+      const charWidth = 13;
+      const padding = 26; // 24px padding + 2px border
+      const estimatedWidth = nodeId.length * charWidth + padding;
+
+      // Return max of estimated width and minWidth (60px for rectangles)
+      return Math.max(estimatedWidth, 60);
+    };
+
+    // Calculate subtree bounds (rightmost edge including node width)
+    const getSubtreeRight = nodeId => {
+      const node = nodeMap.get(nodeId);
+      if (!node) return 0;
+      const nodeChildren = children.get(nodeId);
+      if (!nodeChildren || nodeChildren.length === 0) {
+        // Return right edge: position + width
+        return node.position.x + estimateNodeWidth(nodeId);
       }
+
+      // Return the rightmost edge of all children
+      return Math.max(...nodeChildren.map(childId => getSubtreeRight(childId)));
+    };
+
+    // Fix overlaps: ensure siblings maintain spacing based on subtree width
+    const subtreeGap = 100; // Gap between subtrees
+
+    const applySpacing = () => {
+      nodesByLevel.forEach((nodeIds, level) => {
+        // Sort siblings by X position
+        const sortedNodes = nodeIds.map(id => nodeMap.get(id)).filter(Boolean).sort((a, b) => a.position.x - b.position.x);
+
+        // Adjust positions to maintain spacing based on subtree widths
+        for (let i = 1; i < sortedNodes.length; i++) {
+          const prev = sortedNodes[i - 1];
+          const curr = sortedNodes[i];
+
+          // Calculate required spacing based on previous node's subtree
+          const prevSubtreeRight = getSubtreeRight(prev.id);
+          const requiredMinX = prevSubtreeRight + subtreeGap;
+          if (curr.position.x < requiredMinX) {
+            // Push current node and its entire subtree to the right
+            const shift = requiredMinX - curr.position.x;
+            const shiftSubtree = (nodeId, shiftAmount) => {
+              const node = nodeMap.get(nodeId);
+              if (node) {
+                node.position.x += shiftAmount;
+                const nodeChildren = children.get(nodeId);
+                if (nodeChildren) {
+                  nodeChildren.forEach(childId => shiftSubtree(childId, shiftAmount));
+                }
+              }
+            };
+            shiftSubtree(curr.id, shift);
+          }
+        }
+      });
+    };
+
+    // First spacing pass: space all nodes accounting for width
+    applySpacing();
+
+    // Second pass: re-center parents after children have been repositioned by spacing
+    roots.forEach(root => centerParents(root.id));
+
+    // Third pass: fix any overlaps created by re-centering parents
+    applySpacing();
+    return updatedNodes;
+  }
+}
+
+/**
+ * List Layout Handler
+ * Arranges nodes in a vertical list with right-indentation based on hierarchy depth
+ * - Root at top-left
+ * - Children indented right and stacked vertically
+ * - Grandchildren indented further right
+ */
+
+class ListLayout {
+  /**
+   * Apply list layout to nodes
+   * @param {Array} nodes - Current nodes
+   * @param {Array} edges - Current edges
+   * @returns {Array} Nodes with updated positions
+   */
+  static apply(nodes, edges) {
+    console.log('[ListLayout] Starting layout with nodes:', nodes.length, 'edges:', edges.length);
+    if (nodes.length === 0) return nodes;
+    const updatedNodes = [...nodes];
+    const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
+
+    // Build parent -> children mapping
+    const children = new Map();
+    const parents = new Map();
+    edges.forEach(edge => {
+      if (!children.has(edge.source)) {
+        children.set(edge.source, []);
+      }
+      children.get(edge.source).push(edge.target);
+      parents.set(edge.target, edge.source);
     });
 
-    // Position output nodes based on edge labels
-    outgoingEdges.forEach(edge => {
-      const outputNode = nodeMap.get(edge.target);
-      if (!outputNode) return;
-      const label = (edge.label || '').toLowerCase();
-      if (label.includes('yes') || label.includes('true') || label === 'y' || label === 't') {
-        // True/Yes - position to the right (center-aligned)
-        outputNode.position = {
-          x: diamondX + SPACING.horizontal,
-          y: diamondY + CENTER_OFFSET // Offset down to align centers
+    // Find root nodes (nodes with no incoming edges)
+    const roots = nodes.filter(n => !parents.has(n.id));
+    console.log('[ListLayout] Found roots:', roots.map(r => r.id));
+    if (roots.length === 0) {
+      console.warn('[ListLayout] No root nodes found, using first node');
+      roots.push(nodes[0]);
+    }
+
+    // Layout parameters
+    const startX = 100;
+    const startY = 50;
+    const indentX = 150; // Horizontal indent per level
+    const spacingY = 100; // Vertical spacing between nodes
+
+    let currentY = startY;
+
+    // DFS traversal to position nodes
+    const visited = new Set();
+    const positionNode = (nodeId, depth) => {
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+      const node = nodeMap.get(nodeId);
+      if (node) {
+        node.position = {
+          x: startX + depth * indentX,
+          y: currentY
         };
-        console.log('[DecisionLayout] Positioned TRUE node:', outputNode.id, 'at', outputNode.position);
-      } else if (label.includes('no') || label.includes('false') || label === 'n' || label === 'f') {
-        // False/No - position below (center-aligned horizontally)
-        outputNode.position = {
-          x: diamondX,
-          y: diamondY + SPACING.vertical + CENTER_OFFSET // Also offset for consistency
-        };
-        console.log('[DecisionLayout] Positioned FALSE node:', outputNode.id, 'at', outputNode.position);
-      } else {
-        // No label or unknown - position first to right, second below
-        const isFirstOutput = outgoingEdges.indexOf(edge) === 0;
-        outputNode.position = isFirstOutput ? {
-          x: diamondX + SPACING.horizontal,
-          y: diamondY + CENTER_OFFSET
-        } : {
-          x: diamondX,
-          y: diamondY + SPACING.vertical + CENTER_OFFSET
-        };
-        console.log('[DecisionLayout] Positioned unlabeled node:', outputNode.id, 'at', outputNode.position);
+        console.log('[ListLayout] Positioned', nodeId, 'at depth', depth, ':', node.position);
+        currentY += spacingY;
       }
-    });
-  });
-  return updatedNodes;
+
+      // Position children
+      const nodeChildren = children.get(nodeId) || [];
+      nodeChildren.forEach(childId => positionNode(childId, depth + 1));
+    };
+
+    // Position all trees starting from roots
+    roots.forEach(root => positionNode(root.id, 0));
+    return updatedNodes;
+  }
+}
+
+/**
+ * Grid Layout Handler
+ * TODO: Implement grid layout
+ */
+
+class GridLayout {
+  /**
+   * Apply grid layout to nodes
+   * @param {Array} nodes - Current nodes
+   * @param {Array} edges - Current edges
+   * @returns {Array} Nodes with updated positions
+   */
+  static apply(nodes, edges) {
+    console.log('[GridLayout] Not yet implemented');
+    return nodes;
+  }
+}
+
+/**
+ * Circle Layout Handler
+ * TODO: Implement circle layout
+ */
+
+class CircleLayout {
+  /**
+   * Apply circle layout to nodes
+   * @param {Array} nodes - Current nodes
+   * @param {Array} edges - Current edges
+   * @returns {Array} Nodes with updated positions
+   */
+  static apply(nodes, edges) {
+    console.log('[CircleLayout] Not yet implemented');
+    return nodes;
+  }
+}
+
+/**
+ * Layout Manager - Dispatches to individual layout handlers
+ */
+
+
+/**
+ * Decision Layout
+ * Delegates to DecisionLayout handler
+ */
+const applyDecisionLayout = (nodes, edges) => {
+  return DecisionLayout.apply(nodes, edges);
 };
 
 /**
  * Tree Layout (hierarchical top-down)
- * Arranges nodes in a tree structure with roots at top
+ * Delegates to TreeLayout handler
  */
 const applyTreeLayout = (nodes, edges) => {
-  console.log('[TreeLayout] Starting layout with nodes:', nodes.length, 'edges:', edges.length);
-  if (nodes.length === 0) return nodes;
+  return TreeLayout.apply(nodes, edges);
+};
 
-  // Create a copy of nodes to modify
-  const updatedNodes = [...nodes];
-  const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
-
-  // Find root nodes (nodes with no incoming edges)
-  const incomingCount = new Map();
-  nodes.forEach(n => incomingCount.set(n.id, 0));
-  edges.forEach(e => {
-    incomingCount.set(e.target, (incomingCount.get(e.target) || 0) + 1);
-  });
-  const roots = nodes.filter(n => incomingCount.get(n.id) === 0);
-  console.log('[TreeLayout] Found roots:', roots.map(r => r.id));
-  if (roots.length === 0) {
-    console.warn('[TreeLayout] No root nodes found, using first node');
-    roots.push(nodes[0]);
-  }
-
-  // Build tree structure: parent -> children mapping
-  const children = new Map();
-  edges.forEach(edge => {
-    if (!children.has(edge.source)) {
-      children.set(edge.source, []);
-    }
-    children.get(edge.source).push(edge.target);
-  });
-
-  // Calculate tree levels (depth-first traversal)
-  const levels = new Map(); // nodeId -> level
-  const visited = new Set();
-  const assignLevels = (nodeId, level) => {
-    if (visited.has(nodeId)) return;
-    visited.add(nodeId);
-    levels.set(nodeId, level);
-    const nodeChildren = children.get(nodeId) || [];
-    nodeChildren.forEach(childId => assignLevels(childId, level + 1));
-  };
-  roots.forEach(root => assignLevels(root.id, 0));
-
-  // Group nodes by level
-  const nodesByLevel = new Map();
-  levels.forEach((level, nodeId) => {
-    if (!nodesByLevel.has(level)) {
-      nodesByLevel.set(level, []);
-    }
-    nodesByLevel.get(level).push(nodeId);
-  });
-
-  // Layout parameters
-  const levelHeight = 120;
-  const nodeSpacing = 150;
-  const startY = 50;
-
-  // Calculate positions level by level
-  nodesByLevel.forEach((nodeIds, level) => {
-    const totalWidth = (nodeIds.length - 1) * nodeSpacing;
-    const startX = 100 + (roots.length === 1 ? 200 : 0); // Center for single root
-
-    nodeIds.forEach((nodeId, index) => {
-      const node = nodeMap.get(nodeId);
-      if (node) {
-        node.position = {
-          x: startX + index * nodeSpacing - totalWidth / 2,
-          y: startY + level * levelHeight
-        };
-        console.log('[TreeLayout] Positioned', nodeId, 'at level', level, ':', node.position);
-      }
-    });
-  });
-
-  // Center parents above their children
-  const centerParents = nodeId => {
-    const nodeChildren = children.get(nodeId);
-    if (!nodeChildren || nodeChildren.length === 0) return;
-
-    // First, center all children
-    nodeChildren.forEach(childId => centerParents(childId));
-
-    // Calculate average X of children
-    const childNodes = nodeChildren.map(id => nodeMap.get(id)).filter(Boolean);
-    if (childNodes.length > 0) {
-      const avgX = childNodes.reduce((sum, child) => sum + child.position.x, 0) / childNodes.length;
-      const parent = nodeMap.get(nodeId);
-      if (parent) {
-        parent.position.x = avgX;
-      }
-    }
-  };
-
-  // First pass: center parents based on initial child positions
-  roots.forEach(root => centerParents(root.id));
-
-  // Helper: Estimate node width based on text length
-  const estimateNodeWidth = nodeId => {
-    // Approximate character width at 11px font size in system fonts: ~13px per char
-    // (Generous estimate to account for font metrics, kerning, whitespace, and browser rendering)
-    // Plus padding (12px left + 12px right = 24px) + border (1px * 2 = 2px)
-    const charWidth = 13;
-    const padding = 26; // 24px padding + 2px border
-    const estimatedWidth = nodeId.length * charWidth + padding;
-
-    // Return max of estimated width and minWidth (60px for rectangles)
-    return Math.max(estimatedWidth, 60);
-  };
-
-  // Calculate subtree bounds (rightmost edge including node width)
-  const getSubtreeRight = nodeId => {
-    const node = nodeMap.get(nodeId);
-    if (!node) return 0;
-    const nodeChildren = children.get(nodeId);
-    if (!nodeChildren || nodeChildren.length === 0) {
-      // Return right edge: position + width
-      return node.position.x + estimateNodeWidth(nodeId);
-    }
-
-    // Return the rightmost edge of all children
-    return Math.max(...nodeChildren.map(childId => getSubtreeRight(childId)));
-  };
-  const subtreeGap = 100; // Extra gap between subtrees
-
-  nodesByLevel.forEach((nodeIds, level) => {
-    // Sort siblings by X position
-    const sortedNodes = nodeIds.map(id => nodeMap.get(id)).filter(Boolean).sort((a, b) => a.position.x - b.position.x);
-
-    // Adjust positions to maintain spacing based on subtree widths
-    for (let i = 1; i < sortedNodes.length; i++) {
-      const prev = sortedNodes[i - 1];
-      const curr = sortedNodes[i];
-
-      // Calculate required spacing based on previous node's subtree
-      const prevSubtreeRight = getSubtreeRight(prev.id);
-      const requiredMinX = prevSubtreeRight + subtreeGap;
-      if (curr.position.x < requiredMinX) {
-        // Push current node and its entire subtree to the right
-        const shift = requiredMinX - curr.position.x;
-        const shiftSubtree = (nodeId, shiftAmount) => {
-          const node = nodeMap.get(nodeId);
-          if (node) {
-            node.position.x += shiftAmount;
-            const nodeChildren = children.get(nodeId);
-            if (nodeChildren) {
-              nodeChildren.forEach(childId => shiftSubtree(childId, shiftAmount));
-            }
-          }
-        };
-        shiftSubtree(curr.id, shift);
-      }
-    }
-  });
-
-  // Second pass: re-center parents after children have been repositioned by spacing
-  roots.forEach(root => centerParents(root.id));
-
-  // Third pass: fix any overlaps created by re-centering parents
-  // Only check parent-level nodes (non-leaf nodes with children)
-  nodesByLevel.forEach((nodeIds, level) => {
-    const sortedNodes = nodeIds.map(id => nodeMap.get(id)).filter(Boolean).sort((a, b) => a.position.x - b.position.x);
-    for (let i = 1; i < sortedNodes.length; i++) {
-      const prev = sortedNodes[i - 1];
-      const curr = sortedNodes[i];
-      const prevSubtreeRight = getSubtreeRight(prev.id);
-      const requiredMinX = prevSubtreeRight + subtreeGap;
-      if (curr.position.x < requiredMinX) {
-        const shift = requiredMinX - curr.position.x;
-        const shiftSubtree = (nodeId, shiftAmount) => {
-          const node = nodeMap.get(nodeId);
-          if (node) {
-            node.position.x += shiftAmount;
-            const nodeChildren = children.get(nodeId);
-            if (nodeChildren) {
-              nodeChildren.forEach(childId => shiftSubtree(childId, shiftAmount));
-            }
-          }
-        };
-        shiftSubtree(curr.id, shift);
-      }
-    }
-  });
-  return updatedNodes;
+/**
+ * List Layout (vertical stacking with right-indentation)
+ * Delegates to ListLayout handler
+ */
+const applyListLayout = (nodes, edges) => {
+  return ListLayout.apply(nodes, edges);
 };
 
 /**
  * Grid Layout
- * TODO: Implement grid layout
+ * Delegates to GridLayout handler
  */
 const applyGridLayout = (nodes, edges) => {
-  console.log('[GridLayout] Not yet implemented');
-  return nodes;
+  return GridLayout.apply(nodes, edges);
 };
 
 /**
  * Circle Layout
- * TODO: Implement circle layout
+ * Delegates to CircleLayout handler
  */
 const applyCircleLayout = (nodes, edges) => {
-  console.log('[CircleLayout] Not yet implemented');
-  return nodes;
+  return CircleLayout.apply(nodes, edges);
 };
 
 const nodeTypes = {
@@ -41967,11 +42104,14 @@ const FlowDiagram = ({
                   case 'tree':
                     layoutedNodes = applyTreeLayout(currentNodes, currentEdges);
                     break;
+                  case 'list':
+                    layoutedNodes = applyListLayout(currentNodes, currentEdges);
+                    break;
                   case 'grid':
-                    layoutedNodes = applyGridLayout(currentNodes);
+                    layoutedNodes = applyGridLayout(currentNodes, currentEdges);
                     break;
                   case 'circle':
-                    layoutedNodes = applyCircleLayout(currentNodes);
+                    layoutedNodes = applyCircleLayout(currentNodes, currentEdges);
                     break;
                   default:
                     console.error('[FlowDiagram] Unknown layout type:', layoutType);
@@ -43326,8 +43466,8 @@ class TrustQueryDraw {
     this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
 
-    // API endpoint for LLM calls
-    this.apiEndpoint = options.apiEndpoint || 'http://localhost:3001/api/generate-diagram';
+    // API endpoint for LLM calls (relative path since we're on same server)
+    this.apiEndpoint = options.apiEndpoint || '/api/generate-diagram';
     this.init();
   }
   normalizeOptions(options) {
@@ -43585,7 +43725,7 @@ class TrustQueryDraw {
     console.log('[TrustQueryDraw] Generating diagram with AI:', prompt);
 
     // Get selected model from UIControls if available
-    const model = window.uiControls?.getSelectedModel() || 'claude-3-5-sonnet-20241022';
+    const model = window.uiControls?.getSelectedModel() || 'claude-3-5-haiku-20241022';
     try {
       // Call API
       const response = await fetch(this.apiEndpoint, {
@@ -43609,14 +43749,29 @@ class TrustQueryDraw {
       console.log('[TrustQueryDraw] AI generated commands:', result.commands);
       console.log('[TrustQueryDraw] Token usage:', result.usage);
 
-      // Execute commands sequentially
-      for (const command of result.commands) {
-        this.diagramHistory.push(command);
-      }
+      // Insert commands into textarea (one per line)
+      const commandsText = result.commands.join('\n');
+      this.textarea.value = commandsText;
 
-      // Re-render with all commands
-      this.scan();
-      console.log('[TrustQueryDraw] AI generation complete');
+      // Trigger input event to let user see the commands
+      this.textarea.dispatchEvent(new Event('input', {
+        bubbles: true
+      }));
+
+      // Auto-submit after a brief delay so user can see what was generated
+      setTimeout(() => {
+        // Simulate Enter key press to trigger normal submission flow
+        const enterEvent = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true
+        });
+        this.textarea.dispatchEvent(enterEvent);
+      }, 500); // 500ms delay so user can see the commands
+
+      console.log('[TrustQueryDraw] AI generation complete - commands inserted into textarea');
     } catch (error) {
       console.error('[TrustQueryDraw] AI generation error:', error);
       this.showError(`AI generation failed: ${error.message}`);

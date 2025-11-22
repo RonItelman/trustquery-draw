@@ -34,10 +34,17 @@ npm install @anthropic-ai/sdk express cors dotenv
 ### 3. Start the Server
 
 ```bash
-node server/api.js
+npm start
 ```
 
-The server will start on `http://localhost:3001`
+Or for development with auto-reload:
+```bash
+npm run dev
+```
+
+The server will start on `http://localhost:4000` and serve both:
+- Your application frontend
+- The AI API endpoints
 
 ### 4. Use AI Generation
 
@@ -76,9 +83,11 @@ The LLM will automatically know about your new command!
 
 - Default: 100 requests per user per 24 hours
 - Based on IP address
-- Check status: `GET http://localhost:3001/api/rate-limit`
+- Check status: `GET http://localhost:4000/api/rate-limit`
 
 ## API Endpoints
+
+All endpoints are available at `http://localhost:4000`:
 
 - `POST /api/generate-diagram` - Generate diagram from natural language
 - `GET /api/rate-limit` - Check current user's rate limit status
@@ -100,11 +109,11 @@ The LLM will automatically know about your new command!
 
 ### "Rate limit exceeded"
 - Wait 24 hours or increase `RATE_LIMIT_MAX` in `.env`
-- Check status: `curl http://localhost:3001/api/rate-limit`
+- Check status: `curl http://localhost:4000/api/rate-limit`
 
 ### "Connection refused"
 - Make sure the server is running: `node server/api.js`
-- Check the port (default 3001)
+- Check the port (default 4000)
 
 ## Cost Management
 

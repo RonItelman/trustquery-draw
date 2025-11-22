@@ -17,6 +17,7 @@ export default class UIControls {
       fitView: document.getElementById('fit-view-btn'),
       decisionExample: document.getElementById('decision-example-btn'),
       treeExample: document.getElementById('tree-example-btn'),
+      listExample: document.getElementById('list-example-btn'),
       addRectangle: document.getElementById('add-rectangle-btn'),
       addSquare: document.getElementById('add-square-btn'),
       addCircle: document.getElementById('add-circle-btn'),
@@ -25,7 +26,7 @@ export default class UIControls {
 
     // Cache model selector
     this.modelSelector = document.getElementById('model-selector');
-    this.selectedModel = this.modelSelector?.value || 'claude-3-5-sonnet-20241022';
+    this.selectedModel = this.modelSelector?.value || 'claude-3-5-haiku-20241022';
 
     // Setup event listeners
     this.setupGlobalButtons();
@@ -58,6 +59,12 @@ export default class UIControls {
     if (this.buttons.treeExample) {
       this.buttons.treeExample.addEventListener('click', () => {
         this.insertTreePattern();
+      });
+    }
+
+    if (this.buttons.listExample) {
+      this.buttons.listExample.addEventListener('click', () => {
+        this.insertListPattern();
       });
     }
   }
@@ -149,6 +156,23 @@ Execution->Testing
 =layout(tree)`;
 
     this.textarea.value = treeDiagram;
+    this.textarea.focus();
+  }
+
+  /**
+   * Insert list pattern diagram (Folder Structure)
+   */
+  insertListPattern() {
+    const listDiagram = `Project->Planning
+Project->Execution
+Project->Delivery
+Planning->Requirements
+Planning->Design
+Execution->Development
+Execution->Testing
+=layout(list)`;
+
+    this.textarea.value = listDiagram;
     this.textarea.focus();
   }
 

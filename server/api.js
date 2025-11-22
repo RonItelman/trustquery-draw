@@ -1,17 +1,34 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { LLMHandler } from './LLMHandler.js';
 
 // Load environment variables
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from root directory
+app.use(express.static(path.join(__dirname, '..')));
+
+// Serve dist directory for bundled files
+app.use('/dist', express.static(path.join(__dirname, '../dist')));
+
+// Serve examples directory
+app.use('/examples', express.static(path.join(__dirname, '../examples')));
+
+// Serve fonts directory
+app.use('/fonts', express.static(path.join(__dirname, '../fonts')));
 
 // Initialize LLM Handler
 const llmHandler = new LLMHandler();
@@ -136,11 +153,22 @@ app.post('/api/refresh-prompt', (req, res) => {
   }
 });
 
+// Serve the main application
+app.get('/', (req, res) => {
+  res.redirect('/examples/basic.html');
+});
+
 // Start server
 app.listen(PORT, () => {
-  console.log(`[Server] Running on http://localhost:${PORT}`);
-  console.log(`[Server] API endpoint: http://localhost:${PORT}/api/generate-diagram`);
-  console.log(`[Server] Health check: http://localhost:${PORT}/api/health`);
+  console.log('');
+  console.log('🚀 TrustQuery Diagram Server');
+  console.log('================================');
+  console.log(`📱 Application: http://localhost:${PORT}`);
+  console.log(`📊 Examples: http://localhost:${PORT}/examples/basic.html`);
+  console.log(`🤖 API endpoint: http://localhost:${PORT}/api/generate-diagram`);
+  console.log(`💚 Health check: http://localhost:${PORT}/api/health`);
+  console.log('================================');
+  console.log('');
 });
 
 export default app;

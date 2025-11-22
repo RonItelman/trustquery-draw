@@ -66,7 +66,7 @@ export class LLMHandler {
    * @param {string} userId - User identifier for rate limiting
    * @returns {Promise<{commands: string[], usage: object}>}
    */
-  async generateDiagram(userPrompt, model = 'claude-3-5-sonnet-20241022', userId = 'default') {
+  async generateDiagram(userPrompt, model = 'claude-3-5-haiku-20241022', userId = 'default') {
     // Check rate limit
     if (!this.checkRateLimit(userId)) {
       throw new Error('Rate limit exceeded. Please try again later.');

@@ -85,8 +85,8 @@ export default class TrustQueryDraw {
     this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
 
-    // API endpoint for LLM calls
-    this.apiEndpoint = options.apiEndpoint || 'http://localhost:3001/api/generate-diagram';
+    // API endpoint for LLM calls (relative path since we're on same server)
+    this.apiEndpoint = options.apiEndpoint || '/api/generate-diagram';
 
     this.init();
   }
@@ -344,7 +344,7 @@ export default class TrustQueryDraw {
     console.log('[TrustQueryDraw] Generating diagram with AI:', prompt);
 
     // Get selected model from UIControls if available
-    const model = window.uiControls?.getSelectedModel() || 'claude-3-5-sonnet-20241022';
+    const model = window.uiControls?.getSelectedModel() || 'claude-3-5-haiku-20241022';
 
     try {
       // Call API
@@ -373,15 +373,27 @@ export default class TrustQueryDraw {
       console.log('[TrustQueryDraw] AI generated commands:', result.commands);
       console.log('[TrustQueryDraw] Token usage:', result.usage);
 
-      // Execute commands sequentially
-      for (const command of result.commands) {
-        this.diagramHistory.push(command);
-      }
+      // Insert commands into textarea (one per line)
+      const commandsText = result.commands.join('\n');
+      this.textarea.value = commandsText;
 
-      // Re-render with all commands
-      this.scan();
+      // Trigger input event to let user see the commands
+      this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
 
-      console.log('[TrustQueryDraw] AI generation complete');
+      // Auto-submit after a brief delay so user can see what was generated
+      setTimeout(() => {
+        // Simulate Enter key press to trigger normal submission flow
+        const enterEvent = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true
+        });
+        this.textarea.dispatchEvent(enterEvent);
+      }, 500); // 500ms delay so user can see the commands
+
+      console.log('[TrustQueryDraw] AI generation complete - commands inserted into textarea');
     } catch (error) {
       console.error('[TrustQueryDraw] AI generation error:', error);
       this.showError(`AI generation failed: ${error.message}`);

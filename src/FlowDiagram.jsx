@@ -385,6 +385,9 @@ const FlowDiagram = ({
                   case 'tree':
                     layoutedNodes = layoutAlgorithms.applyTreeLayout(currentNodes, currentEdges);
                     break;
+                  case 'list':
+                    layoutedNodes = layoutAlgorithms.applyListLayout(currentNodes, currentEdges);
+                    break;
                   case 'grid':
                     layoutedNodes = layoutAlgorithms.applyGridLayout(currentNodes, currentEdges);
                     break;
