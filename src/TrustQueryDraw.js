@@ -80,6 +80,7 @@ export default class TrustQueryDraw {
         this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
         this.textarea.focus();
       },
+      onCommandError: (message) => this.showError(message),
     });
     this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
@@ -223,10 +224,10 @@ export default class TrustQueryDraw {
         console.log('[TrustQueryDraw] Processing as SHAPES mode');
 
         // Parse the input using DiagramParser
-        const { nodes, edges } = this.diagramParser.getNodesAndEdges(fullContent);
+        const { nodes, edges, commands } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'shapes');
+        this.drawHandler.renderNodes(nodes, edges, 'shapes', commands);
 
         // Trigger callback
         if (this.options.onDraw) {
@@ -237,10 +238,10 @@ export default class TrustQueryDraw {
         console.log('[TrustQueryDraw] Processing as HYBRID mode');
 
         // Parse the input using DiagramParser
-        const { nodes, edges } = this.diagramParser.getNodesAndEdges(fullContent);
+        const { nodes, edges, commands } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'hybrid');
+        this.drawHandler.renderNodes(nodes, edges, 'hybrid', commands);
 
         // Trigger callback
         if (this.options.onDraw) {

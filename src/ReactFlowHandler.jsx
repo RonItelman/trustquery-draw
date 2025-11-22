@@ -1,8 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import FlowDiagram from './FlowDiagram.jsx';
-import MermaidHandler from './parser-handlers/MermaidHandler.js';
-import ArrowHandler from './parser-handlers/ArrowHandler.js';
 import { toPng } from 'html-to-image';
 
 /**
@@ -13,142 +11,29 @@ export default class ReactFlowHandler {
     this.outputContainer = outputContainer;
     this.options = options;
     this.diagrams = new Map(); // Track created diagrams by params
-    this.mermaidHandler = new MermaidHandler();
-    this.arrowHandler = new ArrowHandler();
   }
 
   /**
-   * Create a ReactFlow visualization
+   * Create a ReactFlow visualization (deprecated - use renderNodes instead)
    * @param {string} params - The diagram code
    * @param {string} type - 'mermaid' or 'arrow'
    */
   createVisualization(params, type = 'mermaid') {
-    // Use type as key so we reuse the same container
-    const key = type;
+    console.warn('[ReactFlowHandler] createVisualization is deprecated. Mermaid and arrow modes have been removed. Please use hybrid or shapes mode.');
 
-    // Check if diagram of this type already exists
-    const existing = this.diagrams.get(key);
-
-    if (existing) {
-      // Update existing diagram by reusing the React root
-      console.log('[ReactFlowHandler] Updating existing diagram');
-      if (type === 'arrow') {
-        this.renderArrowDiagram(params, existing.container, key, existing.wrapper, existing.root);
-      } else {
-        this.renderMermaidDiagram(params, existing.container, key, existing.wrapper, existing.root);
-      }
-      return;
-    }
-
-    // Create wrapper (full height/width of container)
-    console.log('[ReactFlowHandler] ✨ CREATING NEW CARD for type:', type);
-    const wrapper = document.createElement('div');
-    wrapper.className = 'tq-diagram-reactflow-wrapper';
-    wrapper.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #f5f5f5;
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      margin: 20px;
+      padding: 16px;
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      color: #856404;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
     `;
-
-    // Create container for ReactFlow
-    const flowContainer = document.createElement('div');
-    flowContainer.className = 'tq-reactflow-container';
-    flowContainer.style.cssText = `
-      background: white;
-      height: 100%;
-      width: 100%;
-    `;
-
-    wrapper.appendChild(flowContainer);
-    this.outputContainer.appendChild(wrapper);
-
-    // Render diagram based on type
-    if (type === 'arrow') {
-      this.renderArrowDiagram(params, flowContainer, key, wrapper);
-    } else {
-      this.renderMermaidDiagram(params, flowContainer, key, wrapper);
-    }
-  }
-
-  /**
-   * Render an arrow syntax diagram using ReactFlow
-   */
-  renderArrowDiagram(arrowCode, container, key, wrapper, existingRoot = null) {
-    try {
-      // Parse arrow syntax to ReactFlow format
-      const { nodes, edges } = this.arrowHandler.parse(arrowCode);
-
-      // Reuse existing root or create new one
-      const root = existingRoot || createRoot(container);
-      root.render(
-        <FlowDiagram
-          initialNodes={nodes}
-          initialEdges={edges}
-          enableStyleInspector={this.options.enableStyleInspector}
-          onNodeSelected={this.options.onNodeSelected}
-          onStyleChange={this.options.onStyleChange}
-          onCopyStyle={this.options.onCopyStyle}
-          onPasteStyleToChat={this.options.onPasteStyleToChat}
-          onExportPNG={() => this.exportToPNG()}
-          onClearCanvas={this.options.onClearCanvas}
-          onSetInput={this.options.onSetInput}
-        />
-      );
-
-      // Track this diagram (only if new)
-      if (!existingRoot) {
-        this.diagrams.set(key, { wrapper, container, root });
-      }
-    } catch (error) {
-      console.error('[ReactFlowHandler] Error parsing/rendering arrow diagram:', error);
-      container.innerHTML = `
-        <div style="color: red; padding: 20px;">
-          Error rendering diagram: ${error.message}
-        </div>
-      `;
-    }
-  }
-
-  /**
-   * Render a mermaid diagram using ReactFlow
-   */
-  renderMermaidDiagram(mermaidCode, container, key, wrapper, existingRoot = null) {
-    try {
-      // Parse mermaid syntax to ReactFlow format
-      const { nodes, edges } = this.mermaidHandler.parse(mermaidCode);
-
-      // Reuse existing root or create new one
-      const root = existingRoot || createRoot(container);
-      root.render(
-        <FlowDiagram
-          initialNodes={nodes}
-          initialEdges={edges}
-          enableStyleInspector={this.options.enableStyleInspector}
-          onNodeSelected={this.options.onNodeSelected}
-          onStyleChange={this.options.onStyleChange}
-          onCopyStyle={this.options.onCopyStyle}
-          onPasteStyleToChat={this.options.onPasteStyleToChat}
-          onExportPNG={() => this.exportToPNG()}
-          onClearCanvas={this.options.onClearCanvas}
-          onSetInput={this.options.onSetInput}
-        />
-      );
-
-      // Track this diagram (only if new)
-      if (!existingRoot) {
-        this.diagrams.set(key, { wrapper, container, root });
-      }
-    } catch (error) {
-      console.error('[ReactFlowHandler] Error parsing/rendering diagram:', error);
-      container.innerHTML = `
-        <div style="color: red; padding: 20px;">
-          Error rendering diagram: ${error.message}
-        </div>
-      `;
-    }
+    errorDiv.innerHTML = `<strong>Note:</strong> ${type} mode has been removed. Please use 'hybrid' mode instead.`;
+    this.outputContainer.appendChild(errorDiv);
   }
 
   /**
@@ -156,8 +41,9 @@ export default class ReactFlowHandler {
    * @param {Array} nodes - ReactFlow nodes
    * @param {Array} edges - ReactFlow edges
    * @param {string} type - Diagram type key
+   * @param {Array} commands - Commands to execute (optional)
    */
-  renderNodes(nodes, edges, type = 'shapes') {
+  renderNodes(nodes, edges, type = 'shapes', commands = []) {
     // Check if diagram of this type already exists
     const existing = this.diagrams.get(type);
 
@@ -168,6 +54,7 @@ export default class ReactFlowHandler {
         <FlowDiagram
           initialNodes={nodes}
           initialEdges={edges}
+          commands={commands}
           enableStyleInspector={this.options.enableStyleInspector}
           onNodeSelected={this.options.onNodeSelected}
           onStyleChange={this.options.onStyleChange}
@@ -176,6 +63,7 @@ export default class ReactFlowHandler {
           onExportPNG={() => this.exportToPNG()}
           onClearCanvas={this.options.onClearCanvas}
           onSetInput={this.options.onSetInput}
+          onCommandError={this.options.onCommandError}
         />
       );
       return;
@@ -210,6 +98,7 @@ export default class ReactFlowHandler {
       <FlowDiagram
         initialNodes={nodes}
         initialEdges={edges}
+        commands={commands}
         enableStyleInspector={this.options.enableStyleInspector}
         onNodeSelected={this.options.onNodeSelected}
         onStyleChange={this.options.onStyleChange}
@@ -217,7 +106,8 @@ export default class ReactFlowHandler {
         onPasteStyleToChat={this.options.onPasteStyleToChat}
         onExportPNG={() => this.exportToPNG()}
         onClearCanvas={this.options.onClearCanvas}
-          onSetInput={this.options.onSetInput}
+        onSetInput={this.options.onSetInput}
+        onCommandError={this.options.onCommandError}
       />
     );
 

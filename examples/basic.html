@@ -74,6 +74,27 @@
       background: #1565c0;
     }
 
+    .example-btn {
+      padding: 6px 12px;
+      background: #f5f5f5;
+      color: #666;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .example-btn:hover {
+      background: #e8e8e8;
+      color: #333;
+    }
+
+    .example-btn:active {
+      background: #ddd;
+    }
+
     #mode-container {
       display: flex;
       flex-direction: row;
@@ -164,6 +185,7 @@
           </label>
           <label for="hybrid-toggle">DIAGRAM</label>
         </div>
+        <button class="example-btn" id="auth-example-btn">Auth</button>
       </div>
 
       <textarea
@@ -179,6 +201,7 @@
 
     const textarea = document.getElementById('textarea');
     const hybridToggle = document.getElementById('hybrid-toggle');
+    const authExampleBtn = document.getElementById('auth-example-btn');
 
     // Declare modeManager variable first
     let modeManager;
@@ -224,6 +247,22 @@
 
     // Register toggle
     modeManager.registerToggle(hybridToggle, 'hybrid');
+
+    // Auth example button
+    authExampleBtn.addEventListener('click', () => {
+      const authDiagram = `start->login
+login->enter_credentials
+enter_credentials->validate
+validate->authenticated?
+authenticated?->success
+authenticated?->retry
+retry->login
+success->dashboard
+dashboard->logout
+logout->start`;
+      textarea.value = authDiagram;
+      textarea.focus();
+    });
   </script>
 </body>
 </html>

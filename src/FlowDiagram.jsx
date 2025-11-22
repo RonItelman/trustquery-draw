@@ -17,6 +17,7 @@ import StyleInspector from './StyleInspector.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
 import SelfLoopEdge from './edges/SelfLoopEdge.jsx';
 import { nodeDefaults } from './nodes/nodeDefaults.js';
+import { DiagramParser } from './DiagramParser.js';
 
 const nodeTypes = {
   rectangle: RectangleNode,
@@ -52,6 +53,7 @@ const customStyles = `
 const FlowDiagram = ({
   initialNodes = [],
   initialEdges = [],
+  commands = [],
   onNodesChange: onNodesChangeProp,
   onEdgesChange: onEdgesChangeProp,
   enableStyleInspector = true,
@@ -63,6 +65,7 @@ const FlowDiagram = ({
   onExportPNG,
   onClearCanvas,
   onSetInput,
+  onCommandError,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -99,6 +102,7 @@ const FlowDiagram = ({
     borderWidth: 1,
   });
   const reactFlowInstance = useRef(null);
+  const diagramParserRef = useRef(new DiagramParser());
 
   // Update nodes when initialNodes changes
   useEffect(() => {
@@ -226,6 +230,60 @@ const FlowDiagram = ({
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
+
+  // Execute commands when they change
+  useEffect(() => {
+    if (commands && commands.length > 0 && nodes.length > 0) {
+      console.log('[FlowDiagram] Executing commands:', commands);
+
+      const commandHandler = diagramParserRef.current.getCommandHandler();
+
+      commands.forEach(command => {
+        console.log('[FlowDiagram] Executing command:', command);
+
+        const success = commandHandler.executeCommand(command, nodes, {
+          onSelectNode: (node) => {
+            console.log('[FlowDiagram] Selecting node from command:', node.id);
+            setSelectedNode(node);
+          },
+          onOpenStyleInspector: (node) => {
+            console.log('[FlowDiagram] Opening style inspector from command for node:', node.id);
+            setShowStyleInspector(true);
+          },
+          onApplyStyle: (nodeId, styles) => {
+            console.log('[FlowDiagram] Applying styles from command:', nodeId, styles);
+            setNodes((nds) =>
+              nds.map((n) => {
+                if (n.id === nodeId) {
+                  return {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      styleOverrides: {
+                        ...n.data.styleOverrides,
+                        ...styles,
+                      },
+                    },
+                  };
+                }
+                return n;
+              })
+            );
+          },
+          onError: (message) => {
+            console.error('[FlowDiagram] Command error:', message);
+            if (onCommandError) {
+              onCommandError(message);
+            }
+          },
+        });
+
+        if (success) {
+          console.log('[FlowDiagram] Command executed successfully');
+        }
+      });
+    }
+  }, [commands, nodes, onCommandError, setNodes]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge({
@@ -366,7 +424,7 @@ const FlowDiagram = ({
         zoomOnScroll={isModifierKeyPressed}
         panOnScroll={false}
         zoomOnPinch={true}
-        panOnDrag={true}
+        panOnDrag={isSpacePressed}
         preventScrolling={isModifierKeyPressed}
       >
         <Background variant="dots" gap={12} size={1} />

@@ -26462,372 +26462,6 @@ const SelfLoopEdge = ({
   }, label)));
 };
 
-const nodeTypes = {
-  rectangle: RectangleNode,
-  circle: CircleNode,
-  square: SquareNode,
-  diamond: DiamondNode,
-  default: RectangleNode // Fallback to rectangle
-};
-const edgeTypes = {
-  selfLoop: SelfLoopEdge
-};
-
-// Custom styles to override ReactFlow's default selection
-const customStyles = `
-  .react-flow__node.selected {
-    box-shadow: none !important;
-  }
-
-  .react-flow__node.selected .react-flow__handle {
-    opacity: 1 !important;
-  }
-
-  .tq-flow-space-pan .react-flow__pane {
-    cursor: grab !important;
-  }
-
-  .tq-flow-space-pan .react-flow__pane:active {
-    cursor: grabbing !important;
-  }
-`;
-const FlowDiagram = ({
-  initialNodes = [],
-  initialEdges = [],
-  onNodesChange: onNodesChangeProp,
-  onEdgesChange: onEdgesChangeProp,
-  enableStyleInspector = true,
-  enableSettingsPanel = true,
-  onNodeSelected,
-  onStyleChange: onStyleChangeProp,
-  onCopyStyle,
-  onPasteStyleToChat,
-  onExportPNG,
-  onClearCanvas,
-  onSetInput
-}) => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [isModifierKeyPressed, setIsModifierKeyPressed] = reactExports.useState(false);
-
-  // Handle JSON export
-  const handleExportJSON = reactExports.useCallback(() => {
-    const exportData = {
-      nodes: nodes.map(node => ({
-        id: node.id,
-        type: node.type,
-        label: node.data.label,
-        position: node.position,
-        styleOverrides: node.data.styleOverrides
-      })),
-      edges: edges.map(edge => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        label: edge.label,
-        type: edge.type
-      }))
-    };
-    const jsonString = JSON.stringify(exportData, null, 2);
-    navigator.clipboard.writeText(jsonString);
-  }, [nodes, edges]);
-  const [isSpacePressed, setIsSpacePressed] = reactExports.useState(false);
-  const [selectedNode, setSelectedNode] = reactExports.useState(null);
-  const [showStyleInspector, setShowStyleInspector] = reactExports.useState(false);
-  const [defaultStyles, setDefaultStyles] = reactExports.useState({
-    fillColor: '#ffffff',
-    borderColor: '#000000',
-    borderWidth: 1
-  });
-  const reactFlowInstance = reactExports.useRef(null);
-
-  // Update nodes when initialNodes changes
-  reactExports.useEffect(() => {
-    setNodes(currentNodes => {
-      // Create a map of current nodes by ID to preserve user changes (position, style)
-      const currentNodesMap = new Map(currentNodes.map(n => [n.id, n]));
-
-      // Process new nodes
-      const updatedNodes = initialNodes.map(newNode => {
-        const existingNode = currentNodesMap.get(newNode.id);
-        if (existingNode) {
-          // Node exists - preserve position and styleOverrides, update everything else
-          return {
-            ...newNode,
-            position: existingNode.position,
-            // Keep user's position
-            data: {
-              ...newNode.data,
-              styleOverrides: existingNode.data?.styleOverrides || {} // Keep user's styles
-            }
-          };
-        } else {
-          // New node - apply default styles
-          const {
-            style,
-            ...nodeWithoutStyle
-          } = newNode;
-          // Get default fontSize for this node type
-          const nodeTypeDefaults = nodeDefaults[newNode.type] || nodeDefaults.rectangle;
-          const defaultFontSize = nodeTypeDefaults.fontSize || '11px';
-          return {
-            ...nodeWithoutStyle,
-            data: {
-              ...nodeWithoutStyle.data,
-              styleOverrides: {
-                backgroundColor: defaultStyles.fillColor,
-                borderColor: defaultStyles.borderColor,
-                borderWidth: defaultStyles.borderWidth,
-                fontSize: defaultFontSize
-              }
-            }
-          };
-        }
-      });
-      return updatedNodes;
-    });
-  }, [initialNodes, setNodes, defaultStyles]);
-
-  // Update edges when initialEdges changes
-  reactExports.useEffect(() => {
-    setEdges(currentEdges => {
-      // Create a map of initial edges by ID
-      const initialEdgesMap = new Map(initialEdges.map(e => [e.id, e]));
-
-      // Keep manually created edges (ones not in initialEdges)
-      const manualEdges = currentEdges.filter(edge => !initialEdgesMap.has(edge.id));
-
-      // Merge: initialEdges + manual edges
-      return [...initialEdges, ...manualEdges];
-    });
-  }, [initialEdges, setEdges]);
-
-  // Log JSON representation whenever nodes or edges change
-  reactExports.useEffect(() => {
-    if (nodes.length > 0 || edges.length > 0) {
-      const visualization = {
-        nodes: nodes.map(node => ({
-          id: node.id,
-          type: node.type,
-          label: node.data.label,
-          position: node.position,
-          styleOverrides: node.data.styleOverrides
-        })),
-        edges: edges.map(edge => ({
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          label: edge.label
-        }))
-      };
-      console.log('[Visualization JSON]', JSON.stringify(visualization, null, 2));
-    }
-  }, [nodes, edges]);
-
-  // Trigger fitView when nodes or edges change
-  reactExports.useEffect(() => {
-    if (nodes.length > 0 && reactFlowInstance.current) {
-      // Use setTimeout to ensure nodes are rendered before fitting view
-      setTimeout(() => {
-        reactFlowInstance.current.fitView({
-          padding: 0.2,
-          duration: 200
-        });
-      }, 50);
-    }
-  }, [nodes, edges]);
-
-  // Track CMD (Mac) or CTRL (Windows) key state
-  reactExports.useEffect(() => {
-    const handleKeyDown = e => {
-      if (e.metaKey || e.ctrlKey) {
-        setIsModifierKeyPressed(true);
-      }
-      // Track spacebar for panning (but not when typing in input/textarea)
-      if (e.code === 'Space' && !e.repeat) {
-        const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
-        if (!isTyping) {
-          e.preventDefault(); // Prevent page scroll
-          setIsSpacePressed(true);
-        }
-      }
-    };
-    const handleKeyUp = e => {
-      if (!e.metaKey && !e.ctrlKey) {
-        setIsModifierKeyPressed(false);
-      }
-      // Release spacebar
-      if (e.code === 'Space') {
-        setIsSpacePressed(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-  const onConnect = reactExports.useCallback(params => setEdges(eds => addEdge({
-    ...params,
-    type: 'smoothstep',
-    markerEnd: {
-      type: MarkerType.ArrowClosed
-    }
-  }, eds)), [setEdges]);
-
-  // Handle node selection
-  const handleNodeClick = reactExports.useCallback((event, node) => {
-    setSelectedNode(node);
-    if (onNodeSelected) {
-      onNodeSelected(node, node.style);
-    }
-  }, [onNodeSelected]);
-
-  // Handle pane click (deselect)
-  const handlePaneClick = reactExports.useCallback(() => {
-    setSelectedNode(null);
-    setShowStyleInspector(false);
-  }, []);
-
-  // Handle opening style inspector
-  const handleOpenStyleInspector = reactExports.useCallback(() => {
-    console.log('[FlowDiagram] Opening style inspector');
-    console.log('[FlowDiagram] selectedNode:', selectedNode);
-    console.log('[FlowDiagram] enableStyleInspector:', enableStyleInspector);
-    setShowStyleInspector(true);
-  }, [selectedNode, enableStyleInspector]);
-
-  // Handle style change from inspector
-  const handleStyleChange = reactExports.useCallback((nodeId, newStyle) => {
-    setNodes(nds => nds.map(node => {
-      if (node.id === nodeId) {
-        // Only update data.styleOverrides - never touch node.style
-        // ReactFlow applies node.style to the wrapper, which we don't want
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            styleOverrides: {
-              ...node.data.styleOverrides,
-              ...newStyle
-            }
-          }
-        };
-      }
-      return node;
-    }));
-    if (onStyleChangeProp) {
-      onStyleChangeProp(nodeId, newStyle);
-    }
-  }, [setNodes, onStyleChangeProp]);
-
-  // Handle label change from double-click editing
-  const handleLabelChange = reactExports.useCallback((nodeId, newLabel) => {
-    setNodes(nds => nds.map(node => {
-      if (node.id === nodeId) {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            label: newLabel
-          }
-        };
-      }
-      return node;
-    }));
-  }, [setNodes]);
-
-  // Handle default style changes from settings panel
-  const handleDefaultStyleChange = reactExports.useCallback(newStyles => {
-    console.log('[FlowDiagram] Default styles changed:', newStyles);
-    setDefaultStyles(newStyles);
-  }, []);
-
-  // Wrap the state change handlers to notify parent
-  const handleNodesChange = reactExports.useCallback(changes => {
-    onNodesChange(changes);
-    if (onNodesChangeProp) {
-      onNodesChangeProp(changes);
-    }
-  }, [onNodesChange, onNodesChangeProp]);
-  const handleEdgesChange = reactExports.useCallback(changes => {
-    onEdgesChange(changes);
-    if (onEdgesChangeProp) {
-      onEdgesChangeProp(changes);
-    }
-  }, [onEdgesChange, onEdgesChangeProp]);
-
-  // Add callbacks to node data for opening style inspector and handling style changes
-  const nodesWithCallback = nodes.map(node => ({
-    ...node,
-    data: {
-      ...node.data,
-      onOpenStyleInspector: handleOpenStyleInspector,
-      onStyleChange: handleStyleChange,
-      onLabelChange: handleLabelChange
-    }
-  }));
-  return /*#__PURE__*/React.createElement("div", {
-    className: `tq-flow-diagram-wrapper ${isSpacePressed ? 'tq-flow-space-pan' : ''}`,
-    style: {
-      width: '100%',
-      height: '100%',
-      position: 'relative'
-    }
-  }, /*#__PURE__*/React.createElement("style", null, customStyles), /*#__PURE__*/React.createElement(ReactFlow, {
-    nodes: nodesWithCallback,
-    edges: edges,
-    nodeTypes: nodeTypes,
-    edgeTypes: edgeTypes,
-    onNodesChange: handleNodesChange,
-    onEdgesChange: handleEdgesChange,
-    onConnect: onConnect,
-    onNodeClick: handleNodeClick,
-    onPaneClick: handlePaneClick,
-    onInit: instance => {
-      reactFlowInstance.current = instance;
-      instance.fitView({
-        padding: 0.2
-      });
-    },
-    nodesDraggable: !isSpacePressed,
-    nodesConnectable: true,
-    elementsSelectable: !isSpacePressed,
-    noDragClassName: "nodrag",
-    proOptions: {
-      hideAttribution: true
-    },
-    defaultViewport: {
-      x: 0,
-      y: 0,
-      zoom: 1
-    },
-    zoomOnScroll: isModifierKeyPressed,
-    panOnScroll: false,
-    zoomOnPinch: true,
-    panOnDrag: true,
-    preventScrolling: isModifierKeyPressed
-  }, /*#__PURE__*/React.createElement(Background$1, {
-    variant: "dots",
-    gap: 12,
-    size: 1
-  })), enableSettingsPanel && /*#__PURE__*/React.createElement(SettingsPanel, {
-    defaultStyles: defaultStyles,
-    onDefaultStyleChange: handleDefaultStyleChange,
-    onExportPNG: onExportPNG,
-    onExportJSON: handleExportJSON,
-    onClearCanvas: onClearCanvas,
-    onSetInput: onSetInput
-  }), enableStyleInspector && selectedNode && showStyleInspector && /*#__PURE__*/React.createElement(StyleInspector, {
-    selectedNode: selectedNode,
-    onStyleChange: handleStyleChange,
-    onCopyStyle: onCopyStyle,
-    onPasteStyleToChat: onPasteStyleToChat,
-    onClose: () => setShowStyleInspector(false)
-  }), console.log('[FlowDiagram] Render - enableStyleInspector:', enableStyleInspector, 'selectedNode:', selectedNode?.id, 'showStyleInspector:', showStyleInspector));
-};
-
 function commonjsRequire(path) {
 	throw new Error('Could not dynamically require "' + path + '". Please configure the dynamicRequireTargets or/and ignoreDynamicRequires option of @rollup/plugin-commonjs appropriately for this require call to work.');
 }
@@ -40445,13 +40079,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-var dagre$1;
+var dagre;
 var hasRequiredDagre;
 
 function requireDagre () {
-	if (hasRequiredDagre) return dagre$1;
+	if (hasRequiredDagre) return dagre;
 	hasRequiredDagre = 1;
-	dagre$1 = {
+	dagre = {
 	  graphlib: requireGraphlib(),
 
 	  layout: requireLayout(),
@@ -40462,469 +40096,1084 @@ function requireDagre () {
 	  },
 	  version: requireVersion()
 	};
-	return dagre$1;
+	return dagre;
 }
 
-var dagreExports = requireDagre();
-var dagre = /*@__PURE__*/getDefaultExportFromCjs(dagreExports);
+requireDagre();
 
 /**
- * Parse Mermaid flowchart syntax and convert to ReactFlow nodes and edges
- * Supports basic flowchart syntax like:
- * flowchart TD
- *   A[Start] --> B{Decision}
- *   B -->|Yes| C[OK]
- *   B -->|No| D[End]
+ * QuotedStringParser - Handles quoted strings for multi-line labels
+ * Extracts quoted strings and replaces them with placeholders
  */
-class MermaidHandler {
+class QuotedStringParser {
   constructor() {
-    this.nodeCounter = 0;
+    this.quotedStrings = new Map();
+    this.placeholderPrefix = '__QUOTED_';
+    this.placeholderCounter = 0;
   }
 
   /**
-   * Parse mermaid flowchart code and return ReactFlow compatible nodes and edges
+   * Extract quoted strings from input and replace with placeholders
+   * Supports multi-line quoted strings
+   * @param {string} input - Raw input text
+   * @returns {string} Input with quoted strings replaced by placeholders
    */
-  parse(mermaidCode) {
-    const lines = mermaidCode.trim().split('\n');
-    const nodes = new Map();
-    const edges = [];
+  extractQuotedStrings(input) {
+    this.quotedStrings.clear();
+    this.placeholderCounter = 0;
 
-    // Skip the first line (flowchart TD/LR/etc)
-    const flowchartDirection = this.getDirection(lines[0]);
+    // Match quoted strings (handles multi-line)
+    // Matches: "text" or "multi\nline\ntext"
+    const quotedPattern = /"([^"]*)"/g;
+    return input.replace(quotedPattern, (match, content) => {
+      const placeholder = `${this.placeholderPrefix}${this.placeholderCounter++}`;
+      this.quotedStrings.set(placeholder, content);
+      return placeholder;
+    });
+  }
 
-    // Process each line
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line || line.startsWith('%')) continue; // Skip empty lines and comments
+  /**
+   * Restore quoted strings from placeholders
+   * @param {string} text - Text with placeholders
+   * @returns {string} Text with original quoted strings restored
+   */
+  restoreQuotedStrings(text) {
+    let result = text;
+    this.quotedStrings.forEach((original, placeholder) => {
+      result = result.replace(placeholder, original);
+    });
+    return result;
+  }
 
-      this.parseLine(line, nodes, edges);
+  /**
+   * Check if a string is a placeholder
+   * @param {string} text - Text to check
+   * @returns {boolean} True if text is a placeholder
+   */
+  isPlaceholder(text) {
+    return text.startsWith(this.placeholderPrefix);
+  }
+
+  /**
+   * Get original string from placeholder
+   * @param {string} placeholder - Placeholder text
+   * @returns {string} Original quoted string content
+   */
+  getOriginal(placeholder) {
+    return this.quotedStrings.get(placeholder) || placeholder;
+  }
+}
+
+/**
+ * EdgeSyntaxParser - Parses arrow syntax for edges
+ * Handles: ->, <-, <->, and labeled arrows like -label->
+ */
+class EdgeSyntaxParser {
+  constructor() {
+    // Arrow pattern matches: <-label->, <->, -label->, ->, <-
+    this.arrowPattern = /<-([^<>]+)->|<->|-([^-<>]+)->|->|<-/g;
+  }
+
+  /**
+   * Find all arrows in a line
+   * @param {string} line - Line to parse
+   * @returns {Array} Array of arrow objects with {index, length, direction, edgeLabel, raw}
+   */
+  findArrows(line) {
+    const arrows = [];
+    let match;
+
+    // Reset regex lastIndex
+    this.arrowPattern.lastIndex = 0;
+    while ((match = this.arrowPattern.exec(line)) !== null) {
+      const arrowType = match[0];
+      let edgeLabel = null;
+      let direction = 'forward';
+      if (match[1]) {
+        // Bidirectional with label: <-label->
+        edgeLabel = match[1].trim();
+        direction = 'bidirectional';
+      } else if (match[2]) {
+        // Forward with label: -label->
+        edgeLabel = match[2].trim();
+        direction = 'forward';
+      } else if (arrowType === '<->') {
+        direction = 'bidirectional';
+      } else if (arrowType === '<-') {
+        direction = 'backward';
+      }
+      arrows.push({
+        index: match.index,
+        length: arrowType.length,
+        direction,
+        edgeLabel,
+        raw: arrowType
+      });
     }
-
-    // Convert nodes Map to array
-    const nodesArray = Array.from(nodes.values());
-
-    // Apply auto-layout
-    const {
-      nodes: layoutedNodes,
-      edges: layoutedEdges
-    } = this.getLayoutedElements(nodesArray, edges, flowchartDirection);
-    return {
-      nodes: layoutedNodes,
-      edges: layoutedEdges
-    };
+    return arrows;
   }
 
   /**
-   * Get flowchart direction from first line
+   * Extract node labels between arrows
+   * @param {string} line - Line to parse
+   * @param {Array} arrows - Array of arrow objects
+   * @returns {Array} Array of node labels
    */
-  getDirection(firstLine) {
-    if (firstLine.includes('LR')) return 'LR';
-    if (firstLine.includes('RL')) return 'RL';
-    if (firstLine.includes('TB') || firstLine.includes('TD')) return 'TB';
-    if (firstLine.includes('BT')) return 'BT';
-    return 'TB'; // default
-  }
-
-  /**
-   * Parse a single line of mermaid code
-   */
-  parseLine(line, nodes, edges) {
-    // Match patterns like: A[Text] --> B{Question}
-    // Supports: -->, -->|label|, -.->, -.->|label|
-    const connectionPattern = /([A-Za-z0-9_]+)(\[[^\]]+\]|\{[^\}]+\}|\([^\)]+\)|>\([^\)]+\)>)?[\s]*(-->|-.->|==>)(\|[^\|]+\|)?[\s]*([A-Za-z0-9_]+)(\[[^\]]+\]|\{[^\}]+\}|\([^\)]+\)|>\([^\)]+\)>)?/;
-    const match = line.match(connectionPattern);
-    if (match) {
-      const sourceId = match[1];
-      const sourceLabel = match[2];
-      const edgeType = match[3];
-      const edgeLabel = match[4];
-      const targetId = match[5];
-      const targetLabel = match[6];
-
-      // Create source node if doesn't exist
-      if (!nodes.has(sourceId)) {
-        nodes.set(sourceId, this.createNode(sourceId, sourceLabel));
+  extractNodeLabels(line, arrows) {
+    if (arrows.length === 0) {
+      return [];
+    }
+    const nodes = [];
+    let lastIndex = 0;
+    arrows.forEach((arrow, i) => {
+      // Get text before this arrow
+      const nodeLabel = line.substring(lastIndex, arrow.index).trim();
+      if (nodeLabel) {
+        nodes.push(nodeLabel);
       }
 
-      // Create target node if doesn't exist
-      if (!nodes.has(targetId)) {
-        nodes.set(targetId, this.createNode(targetId, targetLabel));
-      }
-
-      // Create edge
-      edges.push(this.createEdge(sourceId, targetId, edgeLabel, edgeType));
-    } else {
-      // Try to match standalone node definition: A[Text]
-      const nodePattern = /([A-Za-z0-9_]+)(\[[^\]]+\]|\{[^\}]+\}|\([^\)]+\)|>\([^\)]+\)>)/;
-      const nodeMatch = line.match(nodePattern);
-      if (nodeMatch) {
-        const nodeId = nodeMatch[1];
-        const nodeLabel = nodeMatch[2];
-        if (!nodes.has(nodeId)) {
-          nodes.set(nodeId, this.createNode(nodeId, nodeLabel));
+      // If this is the last arrow, get text after it
+      if (i === arrows.length - 1) {
+        const finalLabel = line.substring(arrow.index + arrow.length).trim();
+        if (finalLabel) {
+          nodes.push(finalLabel);
         }
       }
-    }
+      lastIndex = arrow.index + arrow.length;
+    });
+    return nodes;
   }
 
   /**
-   * Create a ReactFlow node from mermaid syntax
+   * Parse a line with arrow syntax
+   * @param {string} line - Line to parse
+   * @returns {Object} {nodeLabels: Array, arrows: Array}
    */
-  createNode(id, labelWithBrackets) {
-    let label = id;
-    let type = 'rectangle'; // Default to rectangle node type
-
-    if (labelWithBrackets) {
-      // Extract label and determine node type based on brackets
-      if (labelWithBrackets.startsWith('[')) {
-        // Rectangle: [Text]
-        label = labelWithBrackets.slice(1, -1);
-        type = 'rectangle';
-      } else if (labelWithBrackets.startsWith('{')) {
-        // Diamond: {Text}
-        label = labelWithBrackets.slice(1, -1);
-        type = 'diamond';
-      } else if (labelWithBrackets.startsWith('(')) {
-        // Circle: (Text)
-        label = labelWithBrackets.slice(1, -1);
-        type = 'circle';
-      }
-    }
-
-    // MermaidParser only converts syntax to ReactFlow config
-    // Node components handle their own styling
+  parseLine(line) {
+    const arrows = this.findArrows(line);
+    const nodeLabels = this.extractNodeLabels(line, arrows);
     return {
-      id,
-      type,
-      data: {
-        label
-      },
-      position: {
-        x: 0,
-        y: 0
-      },
-      // Will be set by layout algorithm
-      draggable: true
-    };
-  }
-
-  /**
-   * Create a ReactFlow edge from mermaid syntax
-   */
-  createEdge(source, target, labelWithPipes, edgeType) {
-    const edge = {
-      id: `e${source}-${target}`,
-      source,
-      target,
-      type: 'smoothstep',
-      animated: false,
-      style: {
-        stroke: '#b1b1b7',
-        strokeWidth: 2
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: '#b1b1b7'
-      }
-    };
-
-    // Add label if present
-    if (labelWithPipes) {
-      edge.label = labelWithPipes.slice(1, -1); // Remove | pipes
-      edge.labelStyle = {
-        fill: '#000',
-        fontWeight: 500
-      };
-      edge.labelBgStyle = {
-        fill: '#fff'
-      };
-    }
-
-    // Handle different edge types
-    if (edgeType === '-.->') {
-      edge.style.strokeDasharray = '5,5';
-    } else if (edgeType === '==>') {
-      edge.style.strokeWidth = 3;
-    }
-    return edge;
-  }
-
-  /**
-   * Apply Dagre layout algorithm to position nodes
-   */
-  getLayoutedElements(nodes, edges, direction = 'TB') {
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({
-      rankdir: direction,
-      nodesep: 100,
-      ranksep: 100
-    });
-    nodes.forEach(node => {
-      dagreGraph.setNode(node.id, {
-        width: 150,
-        height: 50
-      });
-    });
-    edges.forEach(edge => {
-      dagreGraph.setEdge(edge.source, edge.target);
-    });
-    dagre.layout(dagreGraph);
-    const layoutedNodes = nodes.map(node => {
-      const nodeWithPosition = dagreGraph.node(node.id);
-      const position = {
-        x: nodeWithPosition.x - 75,
-        // Center the node
-        y: nodeWithPosition.y - 25
-      };
-      return {
-        ...node,
-        position
-      };
-    });
-    return {
-      nodes: layoutedNodes,
-      edges
+      nodeLabels,
+      arrows
     };
   }
 }
 
 /**
- * Parse arrow syntax and convert to ReactFlow nodes and edges
- *
- * Syntax:
- *   A -> B                    (simple edge)
- *   A -yes-> B                (edge with label)
- *   A -no-> C                 (edge with label)
- *
- * Rules:
- *   1. Label = ID (node identity is its label text)
- *   2. Input handles on LEFT, output handles on RIGHT
- *   3. Diamond shape ONLY if has yes/no or true/false labeled outputs
- *   4. Simple JSON format for debugging
+ * NodeBuilder - Creates and manages nodes
+ * Handles node creation and shape type detection
  */
-class ArrowHandler {
+class NodeBuilder {
   constructor() {
     this.nodes = new Map();
-    this.edges = [];
+    this.nodeOrder = [];
+
+    // Shape keywords that map to specific node types
+    this.shapeKeywords = {
+      'circle': 'circle',
+      'square': 'square',
+      'rectangle': 'rectangle',
+      'diamond': 'diamond'
+    };
   }
 
   /**
-   * Parse arrow syntax and return ReactFlow compatible format
-   */
-  parse(input) {
-    console.log('[ArrowSyntaxParser] Starting parse with input:', input);
-    this.nodes.clear();
-    this.edges = [];
-
-    // Split into lines and process each
-    const lines = input.trim().split('\n');
-    console.log('[ArrowSyntaxParser] Lines to process:', lines);
-    lines.forEach((line, index) => {
-      line = line.trim();
-      if (!line) return;
-      console.log(`[ArrowSyntaxParser] Processing line ${index}: "${line}"`);
-
-      // Simple approach: split on ->
-      if (!line.includes('->')) {
-        console.warn(`[ArrowSyntaxParser] Line does not contain arrow: "${line}"`);
-        return;
-      }
-      const arrowIndex = line.indexOf('->');
-      const beforeArrow = line.substring(0, arrowIndex).trim();
-      const afterArrow = line.substring(arrowIndex + 2).trim();
-      console.log(`[ArrowSyntaxParser] Before arrow: "${beforeArrow}"`);
-      console.log(`[ArrowSyntaxParser] After arrow: "${afterArrow}"`);
-
-      // Check if there's a label: "A -label" -> extract label
-      let fromLabel = beforeArrow;
-      let edgeLabel = null;
-      const labelMatch = beforeArrow.match(/^(.+?)\s+-(\w+)$/);
-      if (labelMatch) {
-        fromLabel = labelMatch[1].trim();
-        edgeLabel = labelMatch[2].trim();
-        console.log(`[ArrowSyntaxParser] Found label: "${edgeLabel}"`);
-      }
-      const toLabel = afterArrow;
-      if (fromLabel && toLabel) {
-        console.log(`[ArrowSyntaxParser] Parsed: ${fromLabel} -${edgeLabel || ''}-> ${toLabel}`);
-
-        // Create nodes (label = id)
-        this.ensureNode(fromLabel);
-        this.ensureNode(toLabel);
-
-        // Create edge in simple format
-        this.edges.push({
-          from: fromLabel,
-          to: toLabel,
-          label: edgeLabel
-        });
-      }
-    });
-
-    // Detect diamond nodes based on yes/no or true/false outputs
-    this.detectDiamondNodes();
-
-    // Log simple JSON format
-    this.logGraph();
-
-    // Convert to ReactFlow format
-    return this.toReactFlow();
-  }
-
-  /**
-   * Ensure node exists (create if needed)
+   * Create or get a node
+   * @param {string} label - Node label
+   * @returns {string} Node ID
    */
   ensureNode(label) {
-    if (!this.nodes.has(label)) {
-      this.nodes.set(label, {
-        id: label,
-        // Label IS the ID
-        label: label,
-        type: 'rectangle' // Default type
-      });
+    const trimmed = label.trim();
+
+    // Detect shape type based on the label text itself
+    const lowerLabel = trimmed.toLowerCase();
+    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
+    if (!this.nodes.has(trimmed)) {
+      const node = {
+        id: trimmed,
+        label: trimmed,
+        type: type
+      };
+      this.nodes.set(trimmed, node);
+      this.nodeOrder.push(trimmed);
+      console.log(`[NodeBuilder] Created node: ${trimmed} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
+    } else {
+      console.log(`[NodeBuilder] Node already exists: ${trimmed}`);
+    }
+    return trimmed;
+  }
+
+  /**
+   * Get all nodes
+   * @returns {Array} Array of node objects
+   */
+  getNodes() {
+    return Array.from(this.nodes.values());
+  }
+
+  /**
+   * Get node order
+   * @returns {Array} Array of node IDs in order of creation
+   */
+  getNodeOrder() {
+    return this.nodeOrder;
+  }
+
+  /**
+   * Clear all nodes
+   */
+  clear() {
+    this.nodes.clear();
+    this.nodeOrder = [];
+  }
+}
+
+/**
+ * EdgeBuilder - Creates and manages edges
+ * Handles edge creation based on arrow directions
+ */
+class EdgeBuilder {
+  constructor() {
+    this.edges = [];
+  }
+
+  /**
+   * Create an edge
+   * @param {string} source - Source node ID
+   * @param {string} target - Target node ID
+   * @param {string} label - Edge label (optional)
+   */
+  createEdge(source, target, label = null) {
+    this.edges.push({
+      id: `${source}-${target}-${this.edges.length}`,
+      source,
+      target,
+      label
+    });
+  }
+
+  /**
+   * Create edges from arrows and node names
+   * @param {Array} arrows - Array of arrow objects
+   * @param {Array} nodeNames - Array of node IDs
+   */
+  createEdgesFromArrows(arrows, nodeNames) {
+    for (let i = 0; i < arrows.length; i++) {
+      const arrow = arrows[i];
+      const sourceName = nodeNames[i];
+      const targetName = nodeNames[i + 1];
+      if (!sourceName || !targetName) continue;
+      if (arrow.direction === 'forward') {
+        this.createEdge(sourceName, targetName, arrow.edgeLabel);
+        console.log(`[EdgeBuilder] Created edge: ${sourceName} -> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+      } else if (arrow.direction === 'backward') {
+        this.createEdge(targetName, sourceName, arrow.edgeLabel);
+        console.log(`[EdgeBuilder] Created edge: ${targetName} <- ${sourceName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+      } else if (arrow.direction === 'bidirectional') {
+        this.createEdge(sourceName, targetName, arrow.edgeLabel);
+        this.createEdge(targetName, sourceName, arrow.edgeLabel);
+        console.log(`[EdgeBuilder] Created bidirectional edge: ${sourceName} <-> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
+      }
     }
   }
 
   /**
-   * Detect diamond nodes based on yes/no or true/false labeled outputs
+   * Get all edges
+   * @returns {Array} Array of edge objects
    */
-  detectDiamondNodes() {
-    this.nodes.forEach((node, nodeId) => {
-      // Get outgoing edges for this node
-      const outgoingEdges = this.edges.filter(e => e.from === nodeId);
-      const labels = outgoingEdges.map(e => e.label?.toLowerCase()).filter(Boolean);
+  getEdges() {
+    return this.edges;
+  }
 
-      // Check for yes/no or true/false pairs
-      const hasYesNo = labels.includes('yes') || labels.includes('no');
-      const hasTrueFalse = labels.includes('true') || labels.includes('false');
-      if (hasYesNo || hasTrueFalse) {
-        node.type = 'diamond';
+  /**
+   * Clear all edges
+   */
+  clear() {
+    this.edges = [];
+  }
+}
+
+/**
+ * CommandHandler - Handles special commands starting with @
+ * Commands are non-persistent and consumed after execution
+ *
+ * Supported commands:
+ * - @node_id - Opens style inspector for the specified node
+ * - @node_id fill:#color border:#color - Apply styles directly (future)
+ */
+class CommandHandler {
+  constructor() {
+    // Regex to match @commands
+    // Matches: @node_id or @node_id with optional parameters
+    this.commandPattern = /^@(\S+)(.*)$/;
+  }
+
+  /**
+   * Detect if input contains a command
+   * @param {string} input - Input text
+   * @returns {Object|null} Command object or null if no command
+   */
+  detectCommand(input) {
+    const trimmed = input.trim();
+    const match = trimmed.match(this.commandPattern);
+    if (match) {
+      const nodeId = match[1];
+      const params = match[2].trim();
+      return {
+        type: 'openStyleInspector',
+        nodeId,
+        params,
+        rawCommand: trimmed
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Extract command from input and return cleaned input
+   * @param {string} input - Input text
+   * @returns {Object} {command: Object|null, cleanedInput: string}
+   */
+  extractCommand(input) {
+    const lines = input.split('\n');
+    const commands = [];
+    const cleanedLines = [];
+    lines.forEach(line => {
+      const command = this.detectCommand(line);
+      if (command) {
+        commands.push(command);
+      } else {
+        cleanedLines.push(line);
       }
     });
+    return {
+      commands,
+      cleanedInput: cleanedLines.join('\n')
+    };
   }
 
   /**
-   * Log simple JSON format for debugging
+   * Parse command parameters for future style application
+   * Example: "fill:#ff0000 border:#000000"
+   * @param {string} params - Parameter string
+   * @returns {Object} Parsed parameters
    */
-  logGraph() {
-    const graph = {
-      nodes: Array.from(this.nodes.values()).map(node => ({
+  parseStyleParams(params) {
+    const styles = {};
+
+    // Match patterns like: fill:#color, border:#color, etc.
+    const fillMatch = params.match(/fill:\s*([#\w]+)/);
+    const borderMatch = params.match(/border:\s*([#\w]+)/);
+    const widthMatch = params.match(/width:\s*(\d+)/);
+    if (fillMatch) styles.backgroundColor = fillMatch[1];
+    if (borderMatch) styles.borderColor = borderMatch[1];
+    if (widthMatch) styles.borderWidth = parseInt(widthMatch[1]);
+    return styles;
+  }
+
+  /**
+   * Validate if a node exists
+   * @param {string} nodeId - Node ID to check
+   * @param {Array} nodes - Array of existing nodes
+   * @returns {Object|null} Node object if found, null otherwise
+   */
+  findNode(nodeId, nodes) {
+    // Case-insensitive matching
+    const lowerNodeId = nodeId.toLowerCase();
+    return nodes.find(node => node.id.toLowerCase() === lowerNodeId);
+  }
+
+  /**
+   * Execute a command
+   * @param {Object} command - Command object
+   * @param {Array} nodes - Array of existing nodes
+   * @param {Function} onOpenStyleInspector - Callback to open style inspector
+   * @param {Function} onSelectNode - Callback to select node
+   * @param {Function} onError - Callback for errors
+   * @returns {boolean} True if command executed successfully
+   */
+  executeCommand(command, nodes, callbacks = {}) {
+    const {
+      onOpenStyleInspector,
+      onSelectNode,
+      onError,
+      onApplyStyle
+    } = callbacks;
+
+    // Find the node
+    const node = this.findNode(command.nodeId, nodes);
+    if (!node) {
+      // Node not found - show error
+      if (onError) {
+        onError(`Node '${command.nodeId}' not found`);
+      }
+      console.error(`[CommandHandler] Node '${command.nodeId}' not found`);
+      return false;
+    }
+    console.log(`[CommandHandler] Executing command for node: ${node.id}`);
+
+    // Select the node
+    if (onSelectNode) {
+      onSelectNode(node);
+    }
+
+    // Check if there are style parameters
+    if (command.params && onApplyStyle) {
+      const styles = this.parseStyleParams(command.params);
+      if (Object.keys(styles).length > 0) {
+        onApplyStyle(node.id, styles);
+        console.log(`[CommandHandler] Applied styles to ${node.id}:`, styles);
+      }
+    }
+
+    // Open style inspector
+    if (onOpenStyleInspector) {
+      onOpenStyleInspector(node);
+    }
+    return true;
+  }
+}
+
+/**
+ * SyntaxManager - Main orchestrator for parsing diagram syntax
+ * Coordinates all parser helpers to convert text input into nodes and edges
+ *
+ * Syntax Rules:
+ * - Each line is a separate command
+ * - Use quotes for multi-line labels: "Multi\nLine"->node
+ * - Arrows: ->, <-, <->
+ * - Labeled arrows: -label->
+ * - Standalone nodes: just type the label
+ * - Commands: @node_id to open style inspector
+ */
+class SyntaxManager {
+  constructor() {
+    this.quotedStringParser = new QuotedStringParser();
+    this.edgeSyntaxParser = new EdgeSyntaxParser();
+    this.nodeBuilder = new NodeBuilder();
+    this.edgeBuilder = new EdgeBuilder();
+    this.commandHandler = new CommandHandler();
+    this.detectedCommands = [];
+  }
+
+  /**
+   * Parse input text into nodes and edges
+   * @param {string} input - Raw input text
+   * @returns {Object} {nodes: Array, edges: Array, commands: Array}
+   */
+  parse(input) {
+    console.log('[SyntaxManager] Starting parse with input:', input);
+
+    // Clear previous state
+    this.nodeBuilder.clear();
+    this.edgeBuilder.clear();
+    this.detectedCommands = [];
+
+    // Step 1: Extract commands (like @node_id)
+    const {
+      commands,
+      cleanedInput
+    } = this.commandHandler.extractCommand(input);
+    this.detectedCommands = commands;
+    console.log('[SyntaxManager] Detected commands:', commands);
+    console.log('[SyntaxManager] Cleaned input:', cleanedInput);
+
+    // Step 2: Extract quoted strings (for multi-line labels)
+    const processedInput = this.quotedStringParser.extractQuotedStrings(cleanedInput);
+    console.log('[SyntaxManager] After extracting quotes:', processedInput);
+
+    // Step 3: Split into lines (each line is a command)
+    const lines = processedInput.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    console.log('[SyntaxManager] Lines to process:', lines);
+
+    // Step 4: Process each line
+    lines.forEach((line, index) => {
+      console.log(`[SyntaxManager] Processing line ${index}: "${line}"`);
+      this.parseLine(line);
+    });
+    const result = {
+      nodes: this.nodeBuilder.getNodes(),
+      edges: this.edgeBuilder.getEdges(),
+      commands: this.detectedCommands
+    };
+    console.log('[SyntaxManager] Parse complete:', result);
+    return result;
+  }
+
+  /**
+   * Parse a single line
+   * @param {string} line - Line to parse
+   */
+  parseLine(line) {
+    // Check if line contains arrows
+    const {
+      nodeLabels,
+      arrows
+    } = this.edgeSyntaxParser.parseLine(line);
+    if (arrows.length > 0) {
+      // Line has arrows - create nodes and edges
+      // Restore quoted strings in node labels
+      const restoredLabels = nodeLabels.map(label => this.quotedStringParser.restoreQuotedStrings(label));
+
+      // Create nodes
+      const nodeIds = restoredLabels.map(label => this.nodeBuilder.ensureNode(label));
+
+      // Create edges
+      this.edgeBuilder.createEdgesFromArrows(arrows, nodeIds);
+    } else {
+      // No arrows - standalone node
+      const restoredLabel = this.quotedStringParser.restoreQuotedStrings(line);
+      this.nodeBuilder.ensureNode(restoredLabel);
+      console.log(`[SyntaxManager] Added standalone node: ${restoredLabel}`);
+    }
+  }
+
+  /**
+   * Get node order (for layout)
+   * @returns {Array} Array of node IDs in creation order
+   */
+  getNodeOrder() {
+    return this.nodeBuilder.getNodeOrder();
+  }
+
+  /**
+   * Get detected commands
+   * @returns {Array} Array of command objects
+   */
+  getCommands() {
+    return this.detectedCommands;
+  }
+
+  /**
+   * Get command handler
+   * @returns {CommandHandler} Command handler instance
+   */
+  getCommandHandler() {
+    return this.commandHandler;
+  }
+}
+
+class DiagramParser {
+  constructor() {
+    this.syntaxManager = new SyntaxManager();
+  }
+  parse(input) {
+    console.log('[DiagramParser] *** NEW REFACTORED CODE WITH SYNTAX MANAGER ***');
+    console.log('[DiagramParser] Starting parse with input:', input);
+
+    // Use SyntaxManager to parse input
+    const {
+      nodes,
+      edges,
+      commands
+    } = this.syntaxManager.parse(input);
+    console.log('[DiagramParser] Parse complete - nodes:', nodes.length, 'edges:', edges.length, 'commands:', commands.length);
+    return {
+      nodes,
+      edges,
+      commands
+    };
+  }
+  layoutGraph(nodes, edges) {
+    // Position nodes based on their appearance order in the input
+    // This preserves the visual left-to-right order as typed
+    const horizontalSpacing = 150;
+    const verticalSpacing = 100;
+    const startX = 100;
+    const startY = 100;
+
+    // Get node order from SyntaxManager
+    const nodeOrder = this.syntaxManager.getNodeOrder();
+
+    // Create a map to track which nodes appear on the same line
+    const nodePositions = new Map();
+
+    // Find backward edges to offset their targets vertically
+    const backwardTargets = new Set();
+    edges.forEach(edge => {
+      // Check if this is a backward edge (source is to the right of target in nodeOrder)
+      const sourceIndex = nodeOrder.indexOf(edge.source);
+      const targetIndex = nodeOrder.indexOf(edge.target);
+      if (sourceIndex > targetIndex) {
+        backwardTargets.add(edge.target);
+      }
+    });
+
+    // Simple layout: position nodes left-to-right in order of appearance
+    nodeOrder.forEach((nodeId, index) => {
+      const yOffset = backwardTargets.has(nodeId) ? verticalSpacing : 0;
+      nodePositions.set(nodeId, {
+        x: startX + index * horizontalSpacing,
+        y: startY + yOffset
+      });
+    });
+
+    // Apply positions to nodes
+    return nodes.map(node => {
+      const position = nodePositions.get(node.id) || {
+        x: startX,
+        y: startY
+      };
+      return {
         id: node.id,
         type: node.type,
-        label: node.label
-      })),
-      edges: this.edges.map(edge => ({
-        from: edge.from,
-        to: edge.to,
-        ...(edge.label && {
-          label: edge.label
-        })
-      }))
-    };
-    console.log('[ArrowSyntaxParser] Graph created:');
-    console.log(JSON.stringify(graph, null, 2));
-    return graph;
-  }
-
-  /**
-   * Convert to ReactFlow format with auto-layout
-   */
-  toReactFlow() {
-    // Convert nodes to ReactFlow format
-    const reactFlowNodes = Array.from(this.nodes.values()).map(node => ({
-      id: node.id,
-      type: node.type,
-      data: {
-        label: node.label
-      },
-      position: {
-        x: 0,
-        y: 0
-      },
-      // Will be set by layout
-      draggable: true
-    }));
-
-    // Convert edges to ReactFlow format
-    const reactFlowEdges = this.edges.map((edge, index) => ({
-      id: `e${edge.from}-${edge.to}-${index}`,
-      source: edge.from,
-      target: edge.to,
-      type: 'smoothstep',
-      animated: false,
-      style: {
-        stroke: '#b1b1b7',
-        strokeWidth: 2
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: '#b1b1b7'
-      },
-      ...(edge.label && {
-        label: edge.label,
-        labelStyle: {
-          fill: '#000',
-          fontWeight: 500
-        },
-        labelBgStyle: {
-          fill: '#fff'
-        }
-      })
-    }));
-
-    // Apply auto-layout
-    const {
-      nodes: layoutedNodes,
-      edges: layoutedEdges
-    } = this.getLayoutedElements(reactFlowNodes, reactFlowEdges, 'LR' // Left-to-right (input left, output right)
-    );
-    return {
-      nodes: layoutedNodes,
-      edges: layoutedEdges
-    };
-  }
-
-  /**
-   * Apply Dagre layout algorithm
-   */
-  getLayoutedElements(nodes, edges, direction = 'LR') {
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({
-      rankdir: direction,
-      // LR = left-to-right (input left, output right)
-      nodesep: 60,
-      // Reduced spacing between nodes
-      ranksep: 80 // Reduced spacing between ranks
-    });
-    nodes.forEach(node => {
-      dagreGraph.setNode(node.id, {
-        width: 70,
-        height: 70
-      }); // Match actual node size
-    });
-    edges.forEach(edge => {
-      dagreGraph.setEdge(edge.source, edge.target);
-    });
-    dagre.layout(dagreGraph);
-    const layoutedNodes = nodes.map(node => {
-      const nodeWithPosition = dagreGraph.node(node.id);
-      return {
-        ...node,
-        position: {
-          x: nodeWithPosition.x - 35,
-          // Center the node (half of width)
-          y: nodeWithPosition.y - 35 // Center the node (half of height)
+        position: position,
+        data: {
+          label: node.label
         }
       };
     });
+  }
+  getNodesAndEdges(input) {
+    const {
+      nodes,
+      edges,
+      commands
+    } = this.parse(input);
+    const layoutedNodes = this.layoutGraph(nodes, edges);
+    const formattedEdges = edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: edge.label,
+      type: edge.source === edge.target ? 'selfLoop' : 'smoothstep',
+      animated: false,
+      markerEnd: {
+        type: MarkerType.ArrowClosed
+      }
+    }));
     return {
       nodes: layoutedNodes,
-      edges
+      edges: formattedEdges,
+      commands
     };
   }
+
+  /**
+   * Get command handler for executing commands
+   * @returns {CommandHandler} Command handler instance
+   */
+  getCommandHandler() {
+    return this.syntaxManager.getCommandHandler();
+  }
 }
+
+const nodeTypes = {
+  rectangle: RectangleNode,
+  circle: CircleNode,
+  square: SquareNode,
+  diamond: DiamondNode,
+  default: RectangleNode // Fallback to rectangle
+};
+const edgeTypes = {
+  selfLoop: SelfLoopEdge
+};
+
+// Custom styles to override ReactFlow's default selection
+const customStyles = `
+  .react-flow__node.selected {
+    box-shadow: none !important;
+  }
+
+  .react-flow__node.selected .react-flow__handle {
+    opacity: 1 !important;
+  }
+
+  .tq-flow-space-pan .react-flow__pane {
+    cursor: grab !important;
+  }
+
+  .tq-flow-space-pan .react-flow__pane:active {
+    cursor: grabbing !important;
+  }
+`;
+const FlowDiagram = ({
+  initialNodes = [],
+  initialEdges = [],
+  commands = [],
+  onNodesChange: onNodesChangeProp,
+  onEdgesChange: onEdgesChangeProp,
+  enableStyleInspector = true,
+  enableSettingsPanel = true,
+  onNodeSelected,
+  onStyleChange: onStyleChangeProp,
+  onCopyStyle,
+  onPasteStyleToChat,
+  onExportPNG,
+  onClearCanvas,
+  onSetInput,
+  onCommandError
+}) => {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [isModifierKeyPressed, setIsModifierKeyPressed] = reactExports.useState(false);
+
+  // Handle JSON export
+  const handleExportJSON = reactExports.useCallback(() => {
+    const exportData = {
+      nodes: nodes.map(node => ({
+        id: node.id,
+        type: node.type,
+        label: node.data.label,
+        position: node.position,
+        styleOverrides: node.data.styleOverrides
+      })),
+      edges: edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label,
+        type: edge.type
+      }))
+    };
+    const jsonString = JSON.stringify(exportData, null, 2);
+    navigator.clipboard.writeText(jsonString);
+  }, [nodes, edges]);
+  const [isSpacePressed, setIsSpacePressed] = reactExports.useState(false);
+  const [selectedNode, setSelectedNode] = reactExports.useState(null);
+  const [showStyleInspector, setShowStyleInspector] = reactExports.useState(false);
+  const [defaultStyles, setDefaultStyles] = reactExports.useState({
+    fillColor: '#ffffff',
+    borderColor: '#000000',
+    borderWidth: 1
+  });
+  const reactFlowInstance = reactExports.useRef(null);
+  const diagramParserRef = reactExports.useRef(new DiagramParser());
+
+  // Update nodes when initialNodes changes
+  reactExports.useEffect(() => {
+    setNodes(currentNodes => {
+      // Create a map of current nodes by ID to preserve user changes (position, style)
+      const currentNodesMap = new Map(currentNodes.map(n => [n.id, n]));
+
+      // Process new nodes
+      const updatedNodes = initialNodes.map(newNode => {
+        const existingNode = currentNodesMap.get(newNode.id);
+        if (existingNode) {
+          // Node exists - preserve position and styleOverrides, update everything else
+          return {
+            ...newNode,
+            position: existingNode.position,
+            // Keep user's position
+            data: {
+              ...newNode.data,
+              styleOverrides: existingNode.data?.styleOverrides || {} // Keep user's styles
+            }
+          };
+        } else {
+          // New node - apply default styles
+          const {
+            style,
+            ...nodeWithoutStyle
+          } = newNode;
+          // Get default fontSize for this node type
+          const nodeTypeDefaults = nodeDefaults[newNode.type] || nodeDefaults.rectangle;
+          const defaultFontSize = nodeTypeDefaults.fontSize || '11px';
+          return {
+            ...nodeWithoutStyle,
+            data: {
+              ...nodeWithoutStyle.data,
+              styleOverrides: {
+                backgroundColor: defaultStyles.fillColor,
+                borderColor: defaultStyles.borderColor,
+                borderWidth: defaultStyles.borderWidth,
+                fontSize: defaultFontSize
+              }
+            }
+          };
+        }
+      });
+      return updatedNodes;
+    });
+  }, [initialNodes, setNodes, defaultStyles]);
+
+  // Update edges when initialEdges changes
+  reactExports.useEffect(() => {
+    setEdges(currentEdges => {
+      // Create a map of initial edges by ID
+      const initialEdgesMap = new Map(initialEdges.map(e => [e.id, e]));
+
+      // Keep manually created edges (ones not in initialEdges)
+      const manualEdges = currentEdges.filter(edge => !initialEdgesMap.has(edge.id));
+
+      // Merge: initialEdges + manual edges
+      return [...initialEdges, ...manualEdges];
+    });
+  }, [initialEdges, setEdges]);
+
+  // Log JSON representation whenever nodes or edges change
+  reactExports.useEffect(() => {
+    if (nodes.length > 0 || edges.length > 0) {
+      const visualization = {
+        nodes: nodes.map(node => ({
+          id: node.id,
+          type: node.type,
+          label: node.data.label,
+          position: node.position,
+          styleOverrides: node.data.styleOverrides
+        })),
+        edges: edges.map(edge => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label
+        }))
+      };
+      console.log('[Visualization JSON]', JSON.stringify(visualization, null, 2));
+    }
+  }, [nodes, edges]);
+
+  // Trigger fitView when nodes or edges change
+  reactExports.useEffect(() => {
+    if (nodes.length > 0 && reactFlowInstance.current) {
+      // Use setTimeout to ensure nodes are rendered before fitting view
+      setTimeout(() => {
+        reactFlowInstance.current.fitView({
+          padding: 0.2,
+          duration: 200
+        });
+      }, 50);
+    }
+  }, [nodes, edges]);
+
+  // Track CMD (Mac) or CTRL (Windows) key state
+  reactExports.useEffect(() => {
+    const handleKeyDown = e => {
+      if (e.metaKey || e.ctrlKey) {
+        setIsModifierKeyPressed(true);
+      }
+      // Track spacebar for panning (but not when typing in input/textarea)
+      if (e.code === 'Space' && !e.repeat) {
+        const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+        if (!isTyping) {
+          e.preventDefault(); // Prevent page scroll
+          setIsSpacePressed(true);
+        }
+      }
+    };
+    const handleKeyUp = e => {
+      if (!e.metaKey && !e.ctrlKey) {
+        setIsModifierKeyPressed(false);
+      }
+      // Release spacebar
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Execute commands when they change
+  reactExports.useEffect(() => {
+    if (commands && commands.length > 0 && nodes.length > 0) {
+      console.log('[FlowDiagram] Executing commands:', commands);
+      const commandHandler = diagramParserRef.current.getCommandHandler();
+      commands.forEach(command => {
+        console.log('[FlowDiagram] Executing command:', command);
+        const success = commandHandler.executeCommand(command, nodes, {
+          onSelectNode: node => {
+            console.log('[FlowDiagram] Selecting node from command:', node.id);
+            setSelectedNode(node);
+          },
+          onOpenStyleInspector: node => {
+            console.log('[FlowDiagram] Opening style inspector from command for node:', node.id);
+            setShowStyleInspector(true);
+          },
+          onApplyStyle: (nodeId, styles) => {
+            console.log('[FlowDiagram] Applying styles from command:', nodeId, styles);
+            setNodes(nds => nds.map(n => {
+              if (n.id === nodeId) {
+                return {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    styleOverrides: {
+                      ...n.data.styleOverrides,
+                      ...styles
+                    }
+                  }
+                };
+              }
+              return n;
+            }));
+          },
+          onError: message => {
+            console.error('[FlowDiagram] Command error:', message);
+            if (onCommandError) {
+              onCommandError(message);
+            }
+          }
+        });
+        if (success) {
+          console.log('[FlowDiagram] Command executed successfully');
+        }
+      });
+    }
+  }, [commands, nodes, onCommandError, setNodes]);
+  const onConnect = reactExports.useCallback(params => setEdges(eds => addEdge({
+    ...params,
+    type: 'smoothstep',
+    markerEnd: {
+      type: MarkerType.ArrowClosed
+    }
+  }, eds)), [setEdges]);
+
+  // Handle node selection
+  const handleNodeClick = reactExports.useCallback((event, node) => {
+    setSelectedNode(node);
+    if (onNodeSelected) {
+      onNodeSelected(node, node.style);
+    }
+  }, [onNodeSelected]);
+
+  // Handle pane click (deselect)
+  const handlePaneClick = reactExports.useCallback(() => {
+    setSelectedNode(null);
+    setShowStyleInspector(false);
+  }, []);
+
+  // Handle opening style inspector
+  const handleOpenStyleInspector = reactExports.useCallback(() => {
+    console.log('[FlowDiagram] Opening style inspector');
+    console.log('[FlowDiagram] selectedNode:', selectedNode);
+    console.log('[FlowDiagram] enableStyleInspector:', enableStyleInspector);
+    setShowStyleInspector(true);
+  }, [selectedNode, enableStyleInspector]);
+
+  // Handle style change from inspector
+  const handleStyleChange = reactExports.useCallback((nodeId, newStyle) => {
+    setNodes(nds => nds.map(node => {
+      if (node.id === nodeId) {
+        // Only update data.styleOverrides - never touch node.style
+        // ReactFlow applies node.style to the wrapper, which we don't want
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            styleOverrides: {
+              ...node.data.styleOverrides,
+              ...newStyle
+            }
+          }
+        };
+      }
+      return node;
+    }));
+    if (onStyleChangeProp) {
+      onStyleChangeProp(nodeId, newStyle);
+    }
+  }, [setNodes, onStyleChangeProp]);
+
+  // Handle label change from double-click editing
+  const handleLabelChange = reactExports.useCallback((nodeId, newLabel) => {
+    setNodes(nds => nds.map(node => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            label: newLabel
+          }
+        };
+      }
+      return node;
+    }));
+  }, [setNodes]);
+
+  // Handle default style changes from settings panel
+  const handleDefaultStyleChange = reactExports.useCallback(newStyles => {
+    console.log('[FlowDiagram] Default styles changed:', newStyles);
+    setDefaultStyles(newStyles);
+  }, []);
+
+  // Wrap the state change handlers to notify parent
+  const handleNodesChange = reactExports.useCallback(changes => {
+    onNodesChange(changes);
+    if (onNodesChangeProp) {
+      onNodesChangeProp(changes);
+    }
+  }, [onNodesChange, onNodesChangeProp]);
+  const handleEdgesChange = reactExports.useCallback(changes => {
+    onEdgesChange(changes);
+    if (onEdgesChangeProp) {
+      onEdgesChangeProp(changes);
+    }
+  }, [onEdgesChange, onEdgesChangeProp]);
+
+  // Add callbacks to node data for opening style inspector and handling style changes
+  const nodesWithCallback = nodes.map(node => ({
+    ...node,
+    data: {
+      ...node.data,
+      onOpenStyleInspector: handleOpenStyleInspector,
+      onStyleChange: handleStyleChange,
+      onLabelChange: handleLabelChange
+    }
+  }));
+  return /*#__PURE__*/React.createElement("div", {
+    className: `tq-flow-diagram-wrapper ${isSpacePressed ? 'tq-flow-space-pan' : ''}`,
+    style: {
+      width: '100%',
+      height: '100%',
+      position: 'relative'
+    }
+  }, /*#__PURE__*/React.createElement("style", null, customStyles), /*#__PURE__*/React.createElement(ReactFlow, {
+    nodes: nodesWithCallback,
+    edges: edges,
+    nodeTypes: nodeTypes,
+    edgeTypes: edgeTypes,
+    onNodesChange: handleNodesChange,
+    onEdgesChange: handleEdgesChange,
+    onConnect: onConnect,
+    onNodeClick: handleNodeClick,
+    onPaneClick: handlePaneClick,
+    onInit: instance => {
+      reactFlowInstance.current = instance;
+      instance.fitView({
+        padding: 0.2
+      });
+    },
+    nodesDraggable: !isSpacePressed,
+    nodesConnectable: true,
+    elementsSelectable: !isSpacePressed,
+    noDragClassName: "nodrag",
+    proOptions: {
+      hideAttribution: true
+    },
+    defaultViewport: {
+      x: 0,
+      y: 0,
+      zoom: 1
+    },
+    zoomOnScroll: isModifierKeyPressed,
+    panOnScroll: false,
+    zoomOnPinch: true,
+    panOnDrag: isSpacePressed,
+    preventScrolling: isModifierKeyPressed
+  }, /*#__PURE__*/React.createElement(Background$1, {
+    variant: "dots",
+    gap: 12,
+    size: 1
+  })), enableSettingsPanel && /*#__PURE__*/React.createElement(SettingsPanel, {
+    defaultStyles: defaultStyles,
+    onDefaultStyleChange: handleDefaultStyleChange,
+    onExportPNG: onExportPNG,
+    onExportJSON: handleExportJSON,
+    onClearCanvas: onClearCanvas,
+    onSetInput: onSetInput
+  }), enableStyleInspector && selectedNode && showStyleInspector && /*#__PURE__*/React.createElement(StyleInspector, {
+    selectedNode: selectedNode,
+    onStyleChange: handleStyleChange,
+    onCopyStyle: onCopyStyle,
+    onPasteStyleToChat: onPasteStyleToChat,
+    onClose: () => setShowStyleInspector(false)
+  }), console.log('[FlowDiagram] Render - enableStyleInspector:', enableStyleInspector, 'selectedNode:', selectedNode?.id, 'showStyleInspector:', showStyleInspector));
+};
 
 function resolveUrl(url, baseUrl) {
     // url is absolute already
@@ -41811,150 +42060,28 @@ class ReactFlowHandler {
     this.outputContainer = outputContainer;
     this.options = options;
     this.diagrams = new Map(); // Track created diagrams by params
-    this.mermaidHandler = new MermaidHandler();
-    this.arrowHandler = new ArrowHandler();
   }
 
   /**
-   * Create a ReactFlow visualization
+   * Create a ReactFlow visualization (deprecated - use renderNodes instead)
    * @param {string} params - The diagram code
    * @param {string} type - 'mermaid' or 'arrow'
    */
   createVisualization(params, type = 'mermaid') {
-    // Use type as key so we reuse the same container
-    const key = type;
-
-    // Check if diagram of this type already exists
-    const existing = this.diagrams.get(key);
-    if (existing) {
-      // Update existing diagram by reusing the React root
-      console.log('[ReactFlowHandler] Updating existing diagram');
-      if (type === 'arrow') {
-        this.renderArrowDiagram(params, existing.container, key, existing.wrapper, existing.root);
-      } else {
-        this.renderMermaidDiagram(params, existing.container, key, existing.wrapper, existing.root);
-      }
-      return;
-    }
-
-    // Create wrapper (full height/width of container)
-    console.log('[ReactFlowHandler] ✨ CREATING NEW CARD for type:', type);
-    const wrapper = document.createElement('div');
-    wrapper.className = 'tq-diagram-reactflow-wrapper';
-    wrapper.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #f5f5f5;
+    console.warn('[ReactFlowHandler] createVisualization is deprecated. Mermaid and arrow modes have been removed. Please use hybrid or shapes mode.');
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      margin: 20px;
+      padding: 16px;
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      color: #856404;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
     `;
-
-    // Create container for ReactFlow
-    const flowContainer = document.createElement('div');
-    flowContainer.className = 'tq-reactflow-container';
-    flowContainer.style.cssText = `
-      background: white;
-      height: 100%;
-      width: 100%;
-    `;
-    wrapper.appendChild(flowContainer);
-    this.outputContainer.appendChild(wrapper);
-
-    // Render diagram based on type
-    if (type === 'arrow') {
-      this.renderArrowDiagram(params, flowContainer, key, wrapper);
-    } else {
-      this.renderMermaidDiagram(params, flowContainer, key, wrapper);
-    }
-  }
-
-  /**
-   * Render an arrow syntax diagram using ReactFlow
-   */
-  renderArrowDiagram(arrowCode, container, key, wrapper, existingRoot = null) {
-    try {
-      // Parse arrow syntax to ReactFlow format
-      const {
-        nodes,
-        edges
-      } = this.arrowHandler.parse(arrowCode);
-
-      // Reuse existing root or create new one
-      const root = existingRoot || clientExports.createRoot(container);
-      root.render(/*#__PURE__*/React.createElement(FlowDiagram, {
-        initialNodes: nodes,
-        initialEdges: edges,
-        enableStyleInspector: this.options.enableStyleInspector,
-        onNodeSelected: this.options.onNodeSelected,
-        onStyleChange: this.options.onStyleChange,
-        onCopyStyle: this.options.onCopyStyle,
-        onPasteStyleToChat: this.options.onPasteStyleToChat,
-        onExportPNG: () => this.exportToPNG(),
-        onClearCanvas: this.options.onClearCanvas,
-        onSetInput: this.options.onSetInput
-      }));
-
-      // Track this diagram (only if new)
-      if (!existingRoot) {
-        this.diagrams.set(key, {
-          wrapper,
-          container,
-          root
-        });
-      }
-    } catch (error) {
-      console.error('[ReactFlowHandler] Error parsing/rendering arrow diagram:', error);
-      container.innerHTML = `
-        <div style="color: red; padding: 20px;">
-          Error rendering diagram: ${error.message}
-        </div>
-      `;
-    }
-  }
-
-  /**
-   * Render a mermaid diagram using ReactFlow
-   */
-  renderMermaidDiagram(mermaidCode, container, key, wrapper, existingRoot = null) {
-    try {
-      // Parse mermaid syntax to ReactFlow format
-      const {
-        nodes,
-        edges
-      } = this.mermaidHandler.parse(mermaidCode);
-
-      // Reuse existing root or create new one
-      const root = existingRoot || clientExports.createRoot(container);
-      root.render(/*#__PURE__*/React.createElement(FlowDiagram, {
-        initialNodes: nodes,
-        initialEdges: edges,
-        enableStyleInspector: this.options.enableStyleInspector,
-        onNodeSelected: this.options.onNodeSelected,
-        onStyleChange: this.options.onStyleChange,
-        onCopyStyle: this.options.onCopyStyle,
-        onPasteStyleToChat: this.options.onPasteStyleToChat,
-        onExportPNG: () => this.exportToPNG(),
-        onClearCanvas: this.options.onClearCanvas,
-        onSetInput: this.options.onSetInput
-      }));
-
-      // Track this diagram (only if new)
-      if (!existingRoot) {
-        this.diagrams.set(key, {
-          wrapper,
-          container,
-          root
-        });
-      }
-    } catch (error) {
-      console.error('[ReactFlowHandler] Error parsing/rendering diagram:', error);
-      container.innerHTML = `
-        <div style="color: red; padding: 20px;">
-          Error rendering diagram: ${error.message}
-        </div>
-      `;
-    }
+    errorDiv.innerHTML = `<strong>Note:</strong> ${type} mode has been removed. Please use 'hybrid' mode instead.`;
+    this.outputContainer.appendChild(errorDiv);
   }
 
   /**
@@ -41962,8 +42089,9 @@ class ReactFlowHandler {
    * @param {Array} nodes - ReactFlow nodes
    * @param {Array} edges - ReactFlow edges
    * @param {string} type - Diagram type key
+   * @param {Array} commands - Commands to execute (optional)
    */
-  renderNodes(nodes, edges, type = 'shapes') {
+  renderNodes(nodes, edges, type = 'shapes', commands = []) {
     // Check if diagram of this type already exists
     const existing = this.diagrams.get(type);
     if (existing) {
@@ -41972,6 +42100,7 @@ class ReactFlowHandler {
       existing.root.render(/*#__PURE__*/React.createElement(FlowDiagram, {
         initialNodes: nodes,
         initialEdges: edges,
+        commands: commands,
         enableStyleInspector: this.options.enableStyleInspector,
         onNodeSelected: this.options.onNodeSelected,
         onStyleChange: this.options.onStyleChange,
@@ -41979,7 +42108,8 @@ class ReactFlowHandler {
         onPasteStyleToChat: this.options.onPasteStyleToChat,
         onExportPNG: () => this.exportToPNG(),
         onClearCanvas: this.options.onClearCanvas,
-        onSetInput: this.options.onSetInput
+        onSetInput: this.options.onSetInput,
+        onCommandError: this.options.onCommandError
       }));
       return;
     }
@@ -42009,6 +42139,7 @@ class ReactFlowHandler {
     root.render(/*#__PURE__*/React.createElement(FlowDiagram, {
       initialNodes: nodes,
       initialEdges: edges,
+      commands: commands,
       enableStyleInspector: this.options.enableStyleInspector,
       onNodeSelected: this.options.onNodeSelected,
       onStyleChange: this.options.onStyleChange,
@@ -42016,7 +42147,8 @@ class ReactFlowHandler {
       onPasteStyleToChat: this.options.onPasteStyleToChat,
       onExportPNG: () => this.exportToPNG(),
       onClearCanvas: this.options.onClearCanvas,
-      onSetInput: this.options.onSetInput
+      onSetInput: this.options.onSetInput,
+      onCommandError: this.options.onCommandError
     }));
     this.diagrams.set(type, {
       wrapper,
@@ -42087,224 +42219,6 @@ class ReactFlowHandler {
     } catch (error) {
       console.error('[ReactFlowHandler] Error exporting PNG:', error);
     }
-  }
-}
-
-class DiagramParser {
-  constructor() {
-    this.nodes = new Map(); // Map of label -> node
-    this.edges = [];
-    this.nodeOrder = []; // Track order of node appearance in input
-
-    // Shape keywords that map to specific node types
-    this.shapeKeywords = {
-      'circle': 'circle',
-      'square': 'square',
-      'rectangle': 'rectangle',
-      'diamond': 'diamond'
-    };
-  }
-  parse(input) {
-    console.log('[DiagramParser] *** NEW REFACTORED CODE LOADED ***');
-    console.log('[DiagramParser] Starting parse with input:', input);
-    this.nodes.clear();
-    this.edges = [];
-    this.nodeOrder = []; // Reset node order tracking
-
-    // Check if input contains arrows
-    if (input.includes('->') || input.includes('<-')) {
-      console.log('[DiagramParser] Contains arrows - using parseArrowSyntax (supports multi-line labels)');
-      // Parse as arrow syntax - this allows multi-line node labels
-      this.parseArrowSyntax(input);
-    } else {
-      console.log('[DiagramParser] No arrows - using parseStandaloneNodes');
-      // No arrows - split by lines and create standalone nodes
-      this.parseStandaloneNodes(input);
-    }
-    const result = {
-      nodes: Array.from(this.nodes.values()),
-      edges: this.edges
-    };
-    console.log('[DiagramParser] Parse complete:', result);
-    return result;
-  }
-  parseStandaloneNodes(input) {
-    const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    console.log('[DiagramParser] Lines to process (no arrows):', lines);
-    lines.forEach((line, index) => {
-      console.log(`[DiagramParser] Processing line ${index}: "${line}"`);
-      this.ensureNode(line);
-    });
-  }
-  parseArrowSyntax(input) {
-    const arrows = this.findArrows(input);
-    if (arrows.length === 0) return;
-    const nodeLabels = this.extractNodeLabels(input, arrows);
-    const nodeNames = nodeLabels.map(label => this.ensureNode(label));
-    this.createEdgesFromArrows(arrows, nodeNames);
-  }
-  findArrows(input) {
-    const arrowPattern = /<-([^<>]+)->|<->|-([^-<>]+)->|->|<-/g;
-    const arrows = [];
-    let match;
-    while ((match = arrowPattern.exec(input)) !== null) {
-      const arrowType = match[0];
-      let edgeLabel = null;
-      let direction = 'forward';
-      if (match[1]) {
-        edgeLabel = match[1].trim();
-        direction = 'bidirectional';
-      } else if (match[2]) {
-        edgeLabel = match[2].trim();
-        direction = 'forward';
-      } else if (arrowType === '<->') {
-        direction = 'bidirectional';
-      } else if (arrowType === '<-') {
-        direction = 'backward';
-      }
-      arrows.push({
-        index: match.index,
-        length: arrowType.length,
-        direction,
-        edgeLabel,
-        raw: arrowType
-      });
-    }
-    return arrows;
-  }
-  extractNodeLabels(input, arrows) {
-    const nodes = [];
-    let lastIndex = 0;
-    arrows.forEach((arrow, i) => {
-      const nodeLabel = input.substring(lastIndex, arrow.index).trim();
-      if (nodeLabel) {
-        nodes.push(nodeLabel);
-      }
-      if (i === arrows.length - 1) {
-        const finalLabel = input.substring(arrow.index + arrow.length).trim();
-        if (finalLabel) {
-          nodes.push(finalLabel);
-        }
-      }
-      lastIndex = arrow.index + arrow.length;
-    });
-    return nodes;
-  }
-  createEdgesFromArrows(arrows, nodeNames) {
-    for (let i = 0; i < arrows.length; i++) {
-      const arrow = arrows[i];
-      const sourceName = nodeNames[i];
-      const targetName = nodeNames[i + 1];
-      if (!sourceName || !targetName) continue;
-      if (arrow.direction === 'forward') {
-        this.createEdge(sourceName, targetName, arrow.edgeLabel);
-        console.log(`[DiagramParser] Created edge: ${sourceName} -> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
-      } else if (arrow.direction === 'backward') {
-        this.createEdge(targetName, sourceName, arrow.edgeLabel);
-        console.log(`[DiagramParser] Created edge: ${targetName} <- ${sourceName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
-      } else if (arrow.direction === 'bidirectional') {
-        this.createEdge(sourceName, targetName, arrow.edgeLabel);
-        this.createEdge(targetName, sourceName, arrow.edgeLabel);
-        console.log(`[DiagramParser] Created bidirectional edge: ${sourceName} <-> ${targetName}${arrow.edgeLabel ? ` (${arrow.edgeLabel})` : ''}`);
-      }
-    }
-  }
-  createEdge(source, target, label) {
-    this.edges.push({
-      id: `${source}-${target}-${this.edges.length}`,
-      source,
-      target,
-      label
-    });
-  }
-  ensureNode(label) {
-    const trimmed = label.trim();
-
-    // Detect shape type based on the label text itself
-    const lowerLabel = trimmed.toLowerCase();
-    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
-    if (!this.nodes.has(trimmed)) {
-      const node = {
-        id: trimmed,
-        label: trimmed,
-        type: type
-      };
-      this.nodes.set(trimmed, node);
-      this.nodeOrder.push(trimmed); // Track order of appearance
-      console.log(`[DiagramParser] Created node: ${trimmed} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
-    } else {
-      console.log(`[DiagramParser] Node already exists: ${trimmed}`);
-    }
-    return trimmed; // Return the node ID for edge creation
-  }
-  layoutGraph(nodes, edges) {
-    // Position nodes based on their appearance order in the input
-    // This preserves the visual left-to-right order as typed
-    const horizontalSpacing = 150;
-    const verticalSpacing = 100;
-    const startX = 100;
-    const startY = 100;
-
-    // Create a map to track which nodes appear on the same line
-    const nodePositions = new Map();
-
-    // Find backward edges to offset their targets vertically
-    const backwardTargets = new Set();
-    edges.forEach(edge => {
-      // Check if this is a backward edge (source is to the right of target in nodeOrder)
-      const sourceIndex = this.nodeOrder.indexOf(edge.source);
-      const targetIndex = this.nodeOrder.indexOf(edge.target);
-      if (sourceIndex > targetIndex) {
-        backwardTargets.add(edge.target);
-      }
-    });
-
-    // Simple layout: position nodes left-to-right in order of appearance
-    this.nodeOrder.forEach((nodeId, index) => {
-      const yOffset = backwardTargets.has(nodeId) ? verticalSpacing : 0;
-      nodePositions.set(nodeId, {
-        x: startX + index * horizontalSpacing,
-        y: startY + yOffset
-      });
-    });
-
-    // Apply positions to nodes
-    return nodes.map(node => {
-      const position = nodePositions.get(node.id) || {
-        x: startX,
-        y: startY
-      };
-      return {
-        id: node.id,
-        type: node.type,
-        position: position,
-        data: {
-          label: node.label
-        }
-      };
-    });
-  }
-  getNodesAndEdges(input) {
-    const {
-      nodes,
-      edges
-    } = this.parse(input);
-    const layoutedNodes = this.layoutGraph(nodes, edges);
-    const formattedEdges = edges.map(edge => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      label: edge.label,
-      type: edge.source === edge.target ? 'selfLoop' : 'smoothstep',
-      animated: false,
-      markerEnd: {
-        type: MarkerType.ArrowClosed
-      }
-    }));
-    return {
-      nodes: layoutedNodes,
-      edges: formattedEdges
-    };
   }
 }
 
@@ -42379,7 +42293,8 @@ class TrustQueryDraw {
           bubbles: true
         }));
         this.textarea.focus();
-      }
+      },
+      onCommandError: message => this.showError(message)
     });
     this.diagramParser = new DiagramParser();
     this.diagramHistory = []; // Accumulate all diagram content
@@ -42519,11 +42434,12 @@ class TrustQueryDraw {
         // Parse the input using DiagramParser
         const {
           nodes,
-          edges
+          edges,
+          commands
         } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'shapes');
+        this.drawHandler.renderNodes(nodes, edges, 'shapes', commands);
 
         // Trigger callback
         if (this.options.onDraw) {
@@ -42539,11 +42455,12 @@ class TrustQueryDraw {
         // Parse the input using DiagramParser
         const {
           nodes,
-          edges
+          edges,
+          commands
         } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'hybrid');
+        this.drawHandler.renderNodes(nodes, edges, 'hybrid', commands);
 
         // Trigger callback
         if (this.options.onDraw) {
