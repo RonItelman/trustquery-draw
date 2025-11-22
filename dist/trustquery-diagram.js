@@ -41258,7 +41258,8 @@ const FlowDiagram = ({
   onExportPNG,
   onClearCanvas,
   onSetInput,
-  onCommandError
+  onCommandError,
+  onReactFlowInit
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -41457,43 +41458,66 @@ const FlowDiagram = ({
           },
           onRenameNode: (nodeId, newLabel) => {
             console.log('[FlowDiagram] Renaming node from command:', nodeId, 'to', newLabel);
+
+            // Update node ID
             setNodes(nds => nds.map(n => {
               if (n.id === nodeId) {
                 return {
                   ...n,
-                  data: {
-                    ...n.data,
-                    label: newLabel
-                  }
+                  id: newLabel // Change the node ID itself
                 };
               }
               return n;
             }));
+
+            // Update edges that reference this node
+            setEdges(eds => eds.map(e => {
+              const newEdge = {
+                ...e
+              };
+              if (e.source === nodeId) {
+                newEdge.source = newLabel;
+                newEdge.id = `${newLabel}-${e.target}-${e.id.split('-').pop()}`;
+              }
+              if (e.target === nodeId) {
+                newEdge.target = newLabel;
+                newEdge.id = `${e.source}-${newLabel}-${e.id.split('-').pop()}`;
+              }
+              return newEdge;
+            }));
           },
           onApplyLayout: (layoutType, currentNodes) => {
             console.log('[FlowDiagram] Applying layout from command:', layoutType);
-            let layoutedNodes;
-            switch (layoutType) {
-              case 'decision':
-                layoutedNodes = applyDecisionLayout(nodes, edges);
-                break;
-              case 'tree':
-                layoutedNodes = applyTreeLayout(nodes);
-                break;
-              case 'grid':
-                layoutedNodes = applyGridLayout(nodes);
-                break;
-              case 'circle':
-                layoutedNodes = applyCircleLayout(nodes);
-                break;
-              default:
-                console.error('[FlowDiagram] Unknown layout type:', layoutType);
-                return;
-            }
-            if (layoutedNodes) {
-              setNodes(layoutedNodes);
+
+            // Use functional setState to get current nodes
+            setNodes(currentNodes => {
+              // Access current edges from setEdges callback
+              let layoutedNodes;
+              setEdges(currentEdges => {
+                // Compute layout with current nodes and edges
+                switch (layoutType) {
+                  case 'decision':
+                    layoutedNodes = applyDecisionLayout(currentNodes, currentEdges);
+                    break;
+                  case 'tree':
+                    layoutedNodes = applyTreeLayout(currentNodes);
+                    break;
+                  case 'grid':
+                    layoutedNodes = applyGridLayout(currentNodes);
+                    break;
+                  case 'circle':
+                    layoutedNodes = applyCircleLayout(currentNodes);
+                    break;
+                  default:
+                    console.error('[FlowDiagram] Unknown layout type:', layoutType);
+                }
+
+                // Edges don't change in layout, return as-is
+                return currentEdges;
+              });
               console.log('[FlowDiagram] Layout applied successfully');
-            }
+              return layoutedNodes || currentNodes;
+            });
           },
           onError: message => {
             console.error('[FlowDiagram] Command error:', message);
@@ -42556,6 +42580,7 @@ class ReactFlowHandler {
     this.outputContainer = outputContainer;
     this.options = options;
     this.diagrams = new Map(); // Track created diagrams by params
+    this.reactFlowInstance = null; // Store ReactFlow instance
   }
 
   /**
@@ -42605,7 +42630,10 @@ class ReactFlowHandler {
         onExportPNG: () => this.exportToPNG(),
         onClearCanvas: this.options.onClearCanvas,
         onSetInput: this.options.onSetInput,
-        onCommandError: this.options.onCommandError
+        onCommandError: this.options.onCommandError,
+        onReactFlowInit: instance => {
+          this.reactFlowInstance = instance;
+        }
       }));
       return;
     }
@@ -42644,7 +42672,10 @@ class ReactFlowHandler {
       onExportPNG: () => this.exportToPNG(),
       onClearCanvas: this.options.onClearCanvas,
       onSetInput: this.options.onSetInput,
-      onCommandError: this.options.onCommandError
+      onCommandError: this.options.onCommandError,
+      onReactFlowInit: instance => {
+        this.reactFlowInstance = instance;
+      }
     }));
     this.diagrams.set(type, {
       wrapper,
@@ -42714,6 +42745,20 @@ class ReactFlowHandler {
       console.log('[ReactFlowHandler] PNG exported successfully');
     } catch (error) {
       console.error('[ReactFlowHandler] Error exporting PNG:', error);
+    }
+  }
+
+  /**
+   * Fit view to show all nodes
+   */
+  fitView() {
+    if (this.reactFlowInstance) {
+      console.log('[ReactFlowHandler] Fitting view to show all nodes');
+      this.reactFlowInstance.fitView({
+        padding: 0.2
+      });
+    } else {
+      console.warn('[ReactFlowHandler] ReactFlow instance not available');
     }
   }
 }
@@ -43012,6 +43057,14 @@ class TrustQueryDraw {
   exportToPNG(filename = 'diagram.png') {
     console.log('[TrustQueryDraw] Exporting to PNG...');
     this.drawHandler.exportToPNG(filename);
+  }
+
+  /**
+   * Fit view to show all nodes
+   */
+  fitView() {
+    console.log('[TrustQueryDraw] Fitting view...');
+    this.drawHandler.fitView();
   }
 
   /**

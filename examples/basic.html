@@ -68,6 +68,7 @@
       font-size: 13px;
       white-space: nowrap;
       flex-shrink: 0;
+      user-select: none;
     }
 
     button:active {
@@ -84,6 +85,7 @@
       font-size: 11px;
       font-weight: 600;
       white-space: nowrap;
+      user-select: none;
     }
 
     .example-btn:hover {
@@ -117,10 +119,18 @@
 
     .pattern-commands {
       gap: 8px;
+      align-self: center; /* Vertically center this section within the container */
     }
 
     .shape-buttons {
       gap: 6px;
+    }
+
+    .mode-divider {
+      width: 1px;
+      height: 32px;
+      background-color: #ddd;
+      margin: 0 4px;
     }
 
     .icon-btn, .shape-btn {
@@ -135,6 +145,7 @@
       justify-content: center;
       width: 32px;
       height: 32px;
+      user-select: none;
     }
 
     .icon-btn:hover, .shape-btn:hover {
@@ -152,7 +163,7 @@
     }
 
     .toggle-item {
-      display: flex;
+      display: none; /* Hide the toggle but keep it functional */
       flex-direction: column;
       gap: 6px;
       align-items: center;
@@ -225,7 +236,7 @@
 
     <div id="chat-input-wrapper">
       <div id="mode-container">
-        <!-- Section 1: Global Buttons -->
+        <!-- Section 1: Global Buttons (hidden toggle + fit view) -->
         <div class="mode-section global-buttons">
           <div class="toggle-item">
             <label class="toggle-switch">
@@ -239,12 +250,7 @@
           </button>
         </div>
 
-        <!-- Section 2: Quick Diagram Pattern Commands -->
-        <div class="mode-section pattern-commands">
-          <button class="example-btn" id="auth-example-btn">Auth</button>
-        </div>
-
-        <!-- Section 3: Quick Shape Buttons -->
+        <!-- Section 2: Quick Shape Buttons -->
         <div class="mode-section shape-buttons">
           <button class="shape-btn" id="add-rectangle-btn" title="Add Rectangle">
             <span class="material-symbols-outlined">crop_square</span>
@@ -258,6 +264,15 @@
           <button class="shape-btn" id="add-diamond-btn" title="Add Diamond">
             <span class="material-symbols-outlined">change_history</span>
           </button>
+        </div>
+
+        <!-- Divider -->
+        <div class="mode-divider"></div>
+
+        <!-- Section 3: Quick Diagram Pattern Commands -->
+        <div class="mode-section pattern-commands">
+          <button class="example-btn" id="auth-example-btn">Auth</button>
+          <button class="example-btn" id="decision-example-btn">Decision</button>
         </div>
       </div>
 

@@ -73,6 +73,7 @@ const FlowDiagram = ({
   onClearCanvas,
   onSetInput,
   onCommandError,
+  onReactFlowInit,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -286,47 +287,70 @@ const FlowDiagram = ({
           },
           onRenameNode: (nodeId, newLabel) => {
             console.log('[FlowDiagram] Renaming node from command:', nodeId, 'to', newLabel);
+
+            // Update node ID
             setNodes((nds) =>
               nds.map((n) => {
                 if (n.id === nodeId) {
                   return {
                     ...n,
-                    data: {
-                      ...n.data,
-                      label: newLabel,
-                    },
+                    id: newLabel,  // Change the node ID itself
                   };
                 }
                 return n;
+              })
+            );
+
+            // Update edges that reference this node
+            setEdges((eds) =>
+              eds.map((e) => {
+                const newEdge = { ...e };
+                if (e.source === nodeId) {
+                  newEdge.source = newLabel;
+                  newEdge.id = `${newLabel}-${e.target}-${e.id.split('-').pop()}`;
+                }
+                if (e.target === nodeId) {
+                  newEdge.target = newLabel;
+                  newEdge.id = `${e.source}-${newLabel}-${e.id.split('-').pop()}`;
+                }
+                return newEdge;
               })
             );
           },
           onApplyLayout: (layoutType, currentNodes) => {
             console.log('[FlowDiagram] Applying layout from command:', layoutType);
 
-            let layoutedNodes;
-            switch (layoutType) {
-              case 'decision':
-                layoutedNodes = layoutAlgorithms.applyDecisionLayout(nodes, edges);
-                break;
-              case 'tree':
-                layoutedNodes = layoutAlgorithms.applyTreeLayout(nodes, edges);
-                break;
-              case 'grid':
-                layoutedNodes = layoutAlgorithms.applyGridLayout(nodes, edges);
-                break;
-              case 'circle':
-                layoutedNodes = layoutAlgorithms.applyCircleLayout(nodes, edges);
-                break;
-              default:
-                console.error('[FlowDiagram] Unknown layout type:', layoutType);
-                return;
-            }
+            // Use functional setState to get current nodes
+            setNodes((currentNodes) => {
+              // Access current edges from setEdges callback
+              let layoutedNodes;
 
-            if (layoutedNodes) {
-              setNodes(layoutedNodes);
+              setEdges((currentEdges) => {
+                // Compute layout with current nodes and edges
+                switch (layoutType) {
+                  case 'decision':
+                    layoutedNodes = layoutAlgorithms.applyDecisionLayout(currentNodes, currentEdges);
+                    break;
+                  case 'tree':
+                    layoutedNodes = layoutAlgorithms.applyTreeLayout(currentNodes, currentEdges);
+                    break;
+                  case 'grid':
+                    layoutedNodes = layoutAlgorithms.applyGridLayout(currentNodes, currentEdges);
+                    break;
+                  case 'circle':
+                    layoutedNodes = layoutAlgorithms.applyCircleLayout(currentNodes, currentEdges);
+                    break;
+                  default:
+                    console.error('[FlowDiagram] Unknown layout type:', layoutType);
+                }
+
+                // Edges don't change in layout, return as-is
+                return currentEdges;
+              });
+
               console.log('[FlowDiagram] Layout applied successfully');
-            }
+              return layoutedNodes || currentNodes;
+            });
           },
           onError: (message) => {
             console.error('[FlowDiagram] Command error:', message);

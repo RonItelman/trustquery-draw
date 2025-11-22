@@ -299,6 +299,14 @@ export default class TrustQueryDraw {
     this.drawHandler.exportToPNG(filename);
   }
 
+  /**
+   * Fit view to show all nodes
+   */
+  fitView() {
+    console.log('[TrustQueryDraw] Fitting view...');
+    this.drawHandler.fitView();
+  }
+
 
 
   /**

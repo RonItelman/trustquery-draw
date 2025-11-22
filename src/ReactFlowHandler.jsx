@@ -11,6 +11,7 @@ export default class ReactFlowHandler {
     this.outputContainer = outputContainer;
     this.options = options;
     this.diagrams = new Map(); // Track created diagrams by params
+    this.reactFlowInstance = null; // Store ReactFlow instance
   }
 
   /**
@@ -64,6 +65,7 @@ export default class ReactFlowHandler {
           onClearCanvas={this.options.onClearCanvas}
           onSetInput={this.options.onSetInput}
           onCommandError={this.options.onCommandError}
+          onReactFlowInit={(instance) => { this.reactFlowInstance = instance; }}
         />
       );
       return;
@@ -108,6 +110,7 @@ export default class ReactFlowHandler {
         onClearCanvas={this.options.onClearCanvas}
         onSetInput={this.options.onSetInput}
         onCommandError={this.options.onCommandError}
+        onReactFlowInit={(instance) => { this.reactFlowInstance = instance; }}
       />
     );
 
@@ -175,6 +178,18 @@ export default class ReactFlowHandler {
       console.log('[ReactFlowHandler] PNG exported successfully');
     } catch (error) {
       console.error('[ReactFlowHandler] Error exporting PNG:', error);
+    }
+  }
+
+  /**
+   * Fit view to show all nodes
+   */
+  fitView() {
+    if (this.reactFlowInstance) {
+      console.log('[ReactFlowHandler] Fitting view to show all nodes');
+      this.reactFlowInstance.fitView({ padding: 0.2 });
+    } else {
+      console.warn('[ReactFlowHandler] ReactFlow instance not available');
     }
   }
 }

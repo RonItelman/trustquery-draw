@@ -16,6 +16,7 @@ export default class UIControls {
     this.buttons = {
       fitView: document.getElementById('fit-view-btn'),
       authExample: document.getElementById('auth-example-btn'),
+      decisionExample: document.getElementById('decision-example-btn'),
       addRectangle: document.getElementById('add-rectangle-btn'),
       addSquare: document.getElementById('add-square-btn'),
       addCircle: document.getElementById('add-circle-btn'),
@@ -40,12 +41,18 @@ export default class UIControls {
   }
 
   /**
-   * Setup pattern command handlers (Auth, etc.)
+   * Setup pattern command handlers (Auth, Decision, etc.)
    */
   setupPatternCommands() {
     if (this.buttons.authExample) {
       this.buttons.authExample.addEventListener('click', () => {
         this.insertAuthPattern();
+      });
+    }
+
+    if (this.buttons.decisionExample) {
+      this.buttons.decisionExample.addEventListener('click', () => {
+        this.insertDecisionPattern();
       });
     }
   }
@@ -106,6 +113,20 @@ dashboard->logout
 logout->start`;
 
     this.textarea.value = authDiagram;
+    this.textarea.focus();
+  }
+
+  /**
+   * Insert decision pattern diagram
+   */
+  insertDecisionPattern() {
+    const decisionDiagram = `Input->diamond
+diamond-Yes->True
+diamond-No->False
+=rename(diamond, Decision?)
+=layout(decision)`;
+
+    this.textarea.value = decisionDiagram;
     this.textarea.focus();
   }
 
