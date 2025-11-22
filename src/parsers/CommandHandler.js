@@ -3,7 +3,8 @@
  * Commands are non-persistent and consumed after execution
  *
  * Supported commands:
- * - @node_id - Opens style inspector for the specified node
+ * - @node_id - Opens style inspector for the specified node (by ID)
+ * - @:number - Opens style inspector for the specified node (by node number)
  * - @node_id fill:#color border:#color - Apply styles directly (future)
  */
 export class CommandHandler {
@@ -85,12 +86,20 @@ export class CommandHandler {
 
   /**
    * Validate if a node exists
-   * @param {string} nodeId - Node ID to check
+   * @param {string} nodeId - Node ID to check (can be node ID or :number for node number)
    * @param {Array} nodes - Array of existing nodes
    * @returns {Object|null} Node object if found, null otherwise
    */
   findNode(nodeId, nodes) {
-    // Case-insensitive matching
+    // Check if nodeId is a node number reference (:number)
+    if (nodeId.startsWith(':')) {
+      const nodeNumber = parseInt(nodeId.substring(1), 10);
+      if (!isNaN(nodeNumber)) {
+        return nodes.find(node => node.data?.nodeNumber === nodeNumber);
+      }
+    }
+
+    // Case-insensitive matching by node ID
     const lowerNodeId = nodeId.toLowerCase();
     return nodes.find(node =>
       node.id.toLowerCase() === lowerNodeId
