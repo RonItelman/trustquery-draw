@@ -4,6 +4,7 @@ const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
   onExportJSON,
+  onImportJSON,
   onClearCanvas,
   onSetInput,
   defaultStyles = {
@@ -19,6 +20,7 @@ const SettingsPanel = ({
   const [showCopied, setShowCopied] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const panelRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleStyleChange = (key, value) => {
     const newStyles = { ...styles, [key]: value };
@@ -27,6 +29,28 @@ const SettingsPanel = ({
       onDefaultStyleChange(newStyles);
     }
   };
+
+  const handleImportJSON = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const jsonData = JSON.parse(event.target.result);
+        if (onImportJSON) {
+          onImportJSON(jsonData);
+        }
+      } catch (error) {
+        console.error('Failed to parse JSON:', error);
+        alert('Failed to parse JSON file. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
+  }, [onImportJSON]);
 
   const handleMouseDown = useCallback((e) => {
     setIsDragging(true);
@@ -273,6 +297,7 @@ const SettingsPanel = ({
           <div style={{ marginBottom: 16 }}>
             {/* Export PNG Button */}
             <button
+              id="trustquery-settings-export-png-button"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onExportPNG) onExportPNG();
@@ -300,6 +325,7 @@ const SettingsPanel = ({
 
             {/* Export JSON Button */}
             <button
+              id="trustquery-settings-export-json-button"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onExportJSON) {
@@ -330,8 +356,46 @@ const SettingsPanel = ({
               {showCopied ? 'Copied to clipboard!' : 'Export to JSON'}
             </button>
 
+            {/* Import JSON Button */}
+            <button
+              id="trustquery-settings-import-json-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>upload</span>
+              Import from JSON
+            </button>
+
+            {/* Hidden file input for JSON import */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleImportJSON}
+              style={{ display: 'none' }}
+            />
+
             {/* Clear Canvas Button */}
             <button
+              id="trustquery-settings-clear-canvas-button"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onClearCanvas) onClearCanvas();

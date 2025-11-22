@@ -227,7 +227,7 @@ export default class TrustQueryDraw {
         const { nodes, edges, commands } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'shapes', commands);
+        this.drawHandler.renderNodes(nodes, edges, 'shapes', commands, this.diagramHistory);
 
         // Trigger callback
         if (this.options.onDraw) {
@@ -241,7 +241,7 @@ export default class TrustQueryDraw {
         const { nodes, edges, commands } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'hybrid', commands);
+        this.drawHandler.renderNodes(nodes, edges, 'hybrid', commands, this.diagramHistory);
 
         // Trigger callback
         if (this.options.onDraw) {

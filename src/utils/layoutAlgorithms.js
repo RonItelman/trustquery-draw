@@ -33,6 +33,9 @@ export const applyDecisionLayout = (nodes, edges) => {
   const updatedNodes = [...nodes];
   const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
 
+  // Center alignment offset: diamond (100px) vs rectangle (60px) = 20px difference
+  const CENTER_OFFSET = 20;
+
   diamondNodes.forEach(diamond => {
     console.log('[DecisionLayout] Processing diamond:', diamond.id);
 
@@ -47,13 +50,13 @@ export const applyDecisionLayout = (nodes, edges) => {
     const diamondY = 200;
     diamond.position = { x: diamondX, y: diamondY };
 
-    // Position input node(s) to the left
+    // Position input node(s) to the left (center-aligned with diamond)
     incomingEdges.forEach((edge, i) => {
       const inputNode = nodeMap.get(edge.source);
       if (inputNode) {
         inputNode.position = {
           x: diamondX - SPACING.horizontal,
-          y: diamondY + (i * SPACING.vertical / 2),
+          y: diamondY + CENTER_OFFSET,  // Offset down to align centers
         };
         console.log('[DecisionLayout] Positioned input node:', inputNode.id, 'at', inputNode.position);
       }
@@ -67,25 +70,25 @@ export const applyDecisionLayout = (nodes, edges) => {
       const label = (edge.label || '').toLowerCase();
 
       if (label.includes('yes') || label.includes('true') || label === 'y' || label === 't') {
-        // True/Yes - position to the right
+        // True/Yes - position to the right (center-aligned)
         outputNode.position = {
           x: diamondX + SPACING.horizontal,
-          y: diamondY,
+          y: diamondY + CENTER_OFFSET,  // Offset down to align centers
         };
         console.log('[DecisionLayout] Positioned TRUE node:', outputNode.id, 'at', outputNode.position);
       } else if (label.includes('no') || label.includes('false') || label === 'n' || label === 'f') {
-        // False/No - position below
+        // False/No - position below (center-aligned horizontally)
         outputNode.position = {
           x: diamondX,
-          y: diamondY + SPACING.vertical,
+          y: diamondY + SPACING.vertical + CENTER_OFFSET,  // Also offset for consistency
         };
         console.log('[DecisionLayout] Positioned FALSE node:', outputNode.id, 'at', outputNode.position);
       } else {
         // No label or unknown - position first to right, second below
         const isFirstOutput = outgoingEdges.indexOf(edge) === 0;
         outputNode.position = isFirstOutput
-          ? { x: diamondX + SPACING.horizontal, y: diamondY }
-          : { x: diamondX, y: diamondY + SPACING.vertical };
+          ? { x: diamondX + SPACING.horizontal, y: diamondY + CENTER_OFFSET }
+          : { x: diamondX, y: diamondY + SPACING.vertical + CENTER_OFFSET };
         console.log('[DecisionLayout] Positioned unlabeled node:', outputNode.id, 'at', outputNode.position);
       }
     });

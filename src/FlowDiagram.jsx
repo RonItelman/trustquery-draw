@@ -18,6 +18,7 @@ import SettingsPanel from './SettingsPanel.jsx';
 import SelfLoopEdge from './edges/SelfLoopEdge.jsx';
 import { nodeDefaults } from './nodes/nodeDefaults.js';
 import { DiagramParser } from './DiagramParser.js';
+import { DiagramImporter } from './DiagramImporter.js';
 import * as layoutAlgorithms from './utils/layoutAlgorithms.js';
 
 const nodeTypes = {
@@ -101,6 +102,24 @@ const FlowDiagram = ({
     const jsonString = JSON.stringify(exportData, null, 2);
     navigator.clipboard.writeText(jsonString);
   }, [nodes, edges]);
+
+  // Handle JSON import using DiagramImporter class
+  const handleImportJSON = useCallback((jsonData) => {
+    try {
+      const { nodes: importedNodes, edges: importedEdges } = DiagramImporter.importFromJSON(jsonData);
+
+      setNodes(importedNodes);
+      setEdges(importedEdges);
+
+      console.log('[FlowDiagram] Successfully imported diagram:', {
+        nodes: importedNodes.length,
+        edges: importedEdges.length,
+      });
+    } catch (error) {
+      console.error('[FlowDiagram] Failed to import JSON:', error);
+      alert(`Failed to import diagram: ${error.message}`);
+    }
+  }, [setNodes, setEdges]);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showStyleInspector, setShowStyleInspector] = useState(false);
@@ -522,6 +541,7 @@ const FlowDiagram = ({
           onDefaultStyleChange={handleDefaultStyleChange}
           onExportPNG={onExportPNG}
           onExportJSON={handleExportJSON}
+          onImportJSON={handleImportJSON}
           onClearCanvas={onClearCanvas}
           onSetInput={onSetInput}
         />

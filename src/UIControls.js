@@ -23,10 +23,15 @@ export default class UIControls {
       addDiamond: document.getElementById('add-diamond-btn'),
     };
 
+    // Cache model selector
+    this.modelSelector = document.getElementById('model-selector');
+    this.selectedModel = this.modelSelector?.value || 'claude-3-5-sonnet-20241022';
+
     // Setup event listeners
     this.setupGlobalButtons();
     this.setupPatternCommands();
     this.setupShapeButtons();
+    this.setupModelSelector();
   }
 
   /**
@@ -84,6 +89,25 @@ export default class UIControls {
         this.addShape('diamond');
       });
     }
+  }
+
+  /**
+   * Setup model selector handler
+   */
+  setupModelSelector() {
+    if (this.modelSelector) {
+      this.modelSelector.addEventListener('change', (e) => {
+        this.selectedModel = e.target.value;
+        console.log('[UIControls] Model changed to:', this.selectedModel);
+      });
+    }
+  }
+
+  /**
+   * Get currently selected model
+   */
+  getSelectedModel() {
+    return this.selectedModel;
   }
 
   /**

@@ -26031,6 +26031,7 @@ const SettingsPanel = ({
   onDefaultStyleChange,
   onExportPNG,
   onExportJSON,
+  onImportJSON,
   onClearCanvas,
   onSetInput,
   defaultStyles = {
@@ -26052,6 +26053,7 @@ const SettingsPanel = ({
     y: 0
   });
   const panelRef = reactExports.useRef(null);
+  const fileInputRef = reactExports.useRef(null);
   const handleStyleChange = (key, value) => {
     const newStyles = {
       ...styles,
@@ -26062,6 +26064,26 @@ const SettingsPanel = ({
       onDefaultStyleChange(newStyles);
     }
   };
+  const handleImportJSON = reactExports.useCallback(e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const jsonData = JSON.parse(event.target.result);
+        if (onImportJSON) {
+          onImportJSON(jsonData);
+        }
+      } catch (error) {
+        console.error('Failed to parse JSON:', error);
+        alert('Failed to parse JSON file. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
+  }, [onImportJSON]);
   const handleMouseDown = reactExports.useCallback(e => {
     setIsDragging(true);
     const rect = panelRef.current.getBoundingClientRect();
@@ -26307,6 +26329,7 @@ const SettingsPanel = ({
       marginBottom: 16
     }
   }, /*#__PURE__*/React.createElement("button", {
+    id: "trustquery-settings-export-png-button",
     onClick: e => {
       e.stopPropagation();
       if (onExportPNG) onExportPNG();
@@ -26333,6 +26356,7 @@ const SettingsPanel = ({
       fontSize: 18
     }
   }, "download"), "Export to PNG"), /*#__PURE__*/React.createElement("button", {
+    id: "trustquery-settings-export-json-button",
     onClick: e => {
       e.stopPropagation();
       if (onExportJSON) {
@@ -26364,6 +26388,42 @@ const SettingsPanel = ({
       fontSize: 18
     }
   }, "code"), showCopied ? 'Copied to clipboard!' : 'Export to JSON'), /*#__PURE__*/React.createElement("button", {
+    id: "trustquery-settings-import-json-button",
+    onClick: e => {
+      e.stopPropagation();
+      fileInputRef.current?.click();
+    },
+    style: {
+      width: '100%',
+      padding: '10px 12px',
+      background: '#f5f5f5',
+      color: '#333',
+      border: '1px solid #ddd',
+      borderRadius: 6,
+      cursor: 'pointer',
+      fontSize: 13,
+      fontWeight: 600,
+      marginBottom: 8,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined",
+    style: {
+      fontSize: 18
+    }
+  }, "upload"), "Import from JSON"), /*#__PURE__*/React.createElement("input", {
+    ref: fileInputRef,
+    type: "file",
+    accept: ".json,application/json",
+    onChange: handleImportJSON,
+    style: {
+      display: 'none'
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    id: "trustquery-settings-clear-canvas-button",
     onClick: e => {
       e.stopPropagation();
       if (onClearCanvas) onClearCanvas();
@@ -41085,6 +41145,144 @@ class DiagramParser {
 }
 
 /**
+ * DiagramImporter - Single responsibility class for importing JSON diagrams
+ * Handles validation, transformation, and error handling for diagram imports
+ */
+class DiagramImporter {
+  /**
+   * Import and transform JSON data to ReactFlow format
+   * @param {Object} jsonData - The JSON data to import
+   * @returns {Object} Object containing nodes and edges arrays
+   * @throws {Error} If JSON format is invalid
+   */
+  static importFromJSON(jsonData) {
+    // Validate input
+    this.validateJSON(jsonData);
+
+    // Transform data
+    const nodes = this.transformNodes(jsonData.nodes);
+    const edges = this.transformEdges(jsonData.edges || []);
+    return {
+      nodes,
+      edges
+    };
+  }
+
+  /**
+   * Validate JSON structure
+   * @param {Object} jsonData - The JSON data to validate
+   * @throws {Error} If validation fails
+   */
+  static validateJSON(jsonData) {
+    if (!jsonData) {
+      throw new Error('Invalid JSON format: data is null or undefined');
+    }
+    if (!jsonData.nodes || !Array.isArray(jsonData.nodes)) {
+      throw new Error('Invalid JSON format: nodes array is required');
+    }
+    if (jsonData.nodes.length === 0) {
+      throw new Error('Invalid JSON format: nodes array cannot be empty');
+    }
+
+    // Validate each node has required fields
+    jsonData.nodes.forEach((node, index) => {
+      if (!node.id) {
+        throw new Error(`Invalid node at index ${index}: id is required`);
+      }
+      if (!node.position) {
+        throw new Error(`Invalid node at index ${index}: position is required`);
+      }
+      if (typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
+        throw new Error(`Invalid node at index ${index}: position must have x and y coordinates`);
+      }
+    });
+
+    // Validate edges if present
+    if (jsonData.edges && Array.isArray(jsonData.edges)) {
+      jsonData.edges.forEach((edge, index) => {
+        if (!edge.id) {
+          throw new Error(`Invalid edge at index ${index}: id is required`);
+        }
+        if (!edge.source) {
+          throw new Error(`Invalid edge at index ${index}: source is required`);
+        }
+        if (!edge.target) {
+          throw new Error(`Invalid edge at index ${index}: target is required`);
+        }
+      });
+    }
+  }
+
+  /**
+   * Transform imported nodes to ReactFlow format
+   * @param {Array} nodes - Array of node objects from JSON
+   * @returns {Array} Array of ReactFlow node objects
+   */
+  static transformNodes(nodes) {
+    return nodes.map(node => {
+      const defaultStyleOverrides = {
+        backgroundColor: '#ffffff',
+        borderColor: '#000000',
+        borderWidth: 1,
+        fontSize: '11px'
+      };
+      return {
+        id: node.id,
+        type: node.type || 'rectangle',
+        position: {
+          x: node.position.x,
+          y: node.position.y
+        },
+        data: {
+          label: node.id,
+          nodeNumber: node.nodeNumber || null,
+          styleOverrides: node.styleOverrides ? {
+            ...defaultStyleOverrides,
+            ...node.styleOverrides
+          } : defaultStyleOverrides
+        }
+      };
+    });
+  }
+
+  /**
+   * Transform imported edges to ReactFlow format
+   * @param {Array} edges - Array of edge objects from JSON
+   * @returns {Array} Array of ReactFlow edge objects
+   */
+  static transformEdges(edges) {
+    return edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: edge.label || null,
+      type: edge.type || 'smoothstep',
+      markerEnd: {
+        type: MarkerType.ArrowClosed
+      }
+    }));
+  }
+
+  /**
+   * Import from JSON string
+   * @param {string} jsonString - JSON string to parse and import
+   * @returns {Object} Object containing nodes and edges arrays
+   * @throws {Error} If parsing or validation fails
+   */
+  static importFromJSONString(jsonString) {
+    try {
+      const jsonData = JSON.parse(jsonString);
+      return this.importFromJSON(jsonData);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error('Invalid JSON format: unable to parse JSON string');
+      }
+      throw error;
+    }
+  }
+}
+
+/**
  * Layout Algorithms - Position nodes according to different patterns
  */
 
@@ -41117,6 +41315,9 @@ const applyDecisionLayout = (nodes, edges) => {
   // Create a copy of nodes to modify
   const updatedNodes = [...nodes];
   const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
+
+  // Center alignment offset: diamond (100px) vs rectangle (60px) = 20px difference
+  const CENTER_OFFSET = 20;
   diamondNodes.forEach(diamond => {
     console.log('[DecisionLayout] Processing diamond:', diamond.id);
 
@@ -41133,13 +41334,13 @@ const applyDecisionLayout = (nodes, edges) => {
       y: diamondY
     };
 
-    // Position input node(s) to the left
+    // Position input node(s) to the left (center-aligned with diamond)
     incomingEdges.forEach((edge, i) => {
       const inputNode = nodeMap.get(edge.source);
       if (inputNode) {
         inputNode.position = {
           x: diamondX - SPACING.horizontal,
-          y: diamondY + i * SPACING.vertical / 2
+          y: diamondY + CENTER_OFFSET // Offset down to align centers
         };
         console.log('[DecisionLayout] Positioned input node:', inputNode.id, 'at', inputNode.position);
       }
@@ -41151,17 +41352,17 @@ const applyDecisionLayout = (nodes, edges) => {
       if (!outputNode) return;
       const label = (edge.label || '').toLowerCase();
       if (label.includes('yes') || label.includes('true') || label === 'y' || label === 't') {
-        // True/Yes - position to the right
+        // True/Yes - position to the right (center-aligned)
         outputNode.position = {
           x: diamondX + SPACING.horizontal,
-          y: diamondY
+          y: diamondY + CENTER_OFFSET // Offset down to align centers
         };
         console.log('[DecisionLayout] Positioned TRUE node:', outputNode.id, 'at', outputNode.position);
       } else if (label.includes('no') || label.includes('false') || label === 'n' || label === 'f') {
-        // False/No - position below
+        // False/No - position below (center-aligned horizontally)
         outputNode.position = {
           x: diamondX,
-          y: diamondY + SPACING.vertical
+          y: diamondY + SPACING.vertical + CENTER_OFFSET // Also offset for consistency
         };
         console.log('[DecisionLayout] Positioned FALSE node:', outputNode.id, 'at', outputNode.position);
       } else {
@@ -41169,10 +41370,10 @@ const applyDecisionLayout = (nodes, edges) => {
         const isFirstOutput = outgoingEdges.indexOf(edge) === 0;
         outputNode.position = isFirstOutput ? {
           x: diamondX + SPACING.horizontal,
-          y: diamondY
+          y: diamondY + CENTER_OFFSET
         } : {
           x: diamondX,
-          y: diamondY + SPACING.vertical
+          y: diamondY + SPACING.vertical + CENTER_OFFSET
         };
         console.log('[DecisionLayout] Positioned unlabeled node:', outputNode.id, 'at', outputNode.position);
       }
@@ -41286,6 +41487,25 @@ const FlowDiagram = ({
     const jsonString = JSON.stringify(exportData, null, 2);
     navigator.clipboard.writeText(jsonString);
   }, [nodes, edges]);
+
+  // Handle JSON import using DiagramImporter class
+  const handleImportJSON = reactExports.useCallback(jsonData => {
+    try {
+      const {
+        nodes: importedNodes,
+        edges: importedEdges
+      } = DiagramImporter.importFromJSON(jsonData);
+      setNodes(importedNodes);
+      setEdges(importedEdges);
+      console.log('[FlowDiagram] Successfully imported diagram:', {
+        nodes: importedNodes.length,
+        edges: importedEdges.length
+      });
+    } catch (error) {
+      console.error('[FlowDiagram] Failed to import JSON:', error);
+      alert(`Failed to import diagram: ${error.message}`);
+    }
+  }, [setNodes, setEdges]);
   const [isSpacePressed, setIsSpacePressed] = reactExports.useState(false);
   const [selectedNode, setSelectedNode] = reactExports.useState(null);
   const [showStyleInspector, setShowStyleInspector] = reactExports.useState(false);
@@ -41684,6 +41904,7 @@ const FlowDiagram = ({
     onDefaultStyleChange: handleDefaultStyleChange,
     onExportPNG: onExportPNG,
     onExportJSON: handleExportJSON,
+    onImportJSON: handleImportJSON,
     onClearCanvas: onClearCanvas,
     onSetInput: onSetInput
   }), enableStyleInspector && selectedNode && showStyleInspector && /*#__PURE__*/React.createElement(StyleInspector, {
@@ -42980,7 +43201,7 @@ class TrustQueryDraw {
         } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'shapes', commands);
+        this.drawHandler.renderNodes(nodes, edges, 'shapes', commands, this.diagramHistory);
 
         // Trigger callback
         if (this.options.onDraw) {
@@ -43001,7 +43222,7 @@ class TrustQueryDraw {
         } = this.diagramParser.getNodesAndEdges(fullContent);
 
         // Render shapes using the direct node rendering method
-        this.drawHandler.renderNodes(nodes, edges, 'hybrid', commands);
+        this.drawHandler.renderNodes(nodes, edges, 'hybrid', commands, this.diagramHistory);
 
         // Trigger callback
         if (this.options.onDraw) {
