@@ -18,6 +18,7 @@ import SettingsPanel from './SettingsPanel.jsx';
 import SelfLoopEdge from './edges/SelfLoopEdge.jsx';
 import { nodeDefaults } from './nodes/nodeDefaults.js';
 import { DiagramParser } from './DiagramParser.js';
+import * as layoutAlgorithms from './utils/layoutAlgorithms.js';
 
 const nodeTypes = {
   rectangle: RectangleNode,
@@ -109,6 +110,7 @@ const FlowDiagram = ({
   });
   const reactFlowInstance = useRef(null);
   const diagramParserRef = useRef(new DiagramParser());
+  const prevCommandsRef = useRef([]);
 
   // Update nodes when initialNodes changes
   useEffect(() => {
@@ -231,11 +233,26 @@ const FlowDiagram = ({
   // Execute commands when they change
   useEffect(() => {
     if (commands && commands.length > 0 && nodes.length > 0) {
-      console.log('[FlowDiagram] Executing commands:', commands);
+      console.log('[FlowDiagram] All commands:', commands);
+      console.log('[FlowDiagram] Previous commands:', prevCommandsRef.current);
+
+      // Find new commands that weren't in the previous array
+      const newCommands = commands.filter(cmd =>
+        !prevCommandsRef.current.some(prevCmd =>
+          JSON.stringify(prevCmd) === JSON.stringify(cmd)
+        )
+      );
+
+      console.log('[FlowDiagram] New commands to execute:', newCommands);
+
+      if (newCommands.length === 0) {
+        console.log('[FlowDiagram] No new commands to execute');
+        return;
+      }
 
       const commandHandler = diagramParserRef.current.getCommandHandler();
 
-      commands.forEach(command => {
+      newCommands.forEach(command => {
         console.log('[FlowDiagram] Executing command:', command);
 
         const success = commandHandler.executeCommand(command, nodes, {
@@ -267,6 +284,50 @@ const FlowDiagram = ({
               })
             );
           },
+          onRenameNode: (nodeId, newLabel) => {
+            console.log('[FlowDiagram] Renaming node from command:', nodeId, 'to', newLabel);
+            setNodes((nds) =>
+              nds.map((n) => {
+                if (n.id === nodeId) {
+                  return {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      label: newLabel,
+                    },
+                  };
+                }
+                return n;
+              })
+            );
+          },
+          onApplyLayout: (layoutType, currentNodes) => {
+            console.log('[FlowDiagram] Applying layout from command:', layoutType);
+
+            let layoutedNodes;
+            switch (layoutType) {
+              case 'decision':
+                layoutedNodes = layoutAlgorithms.applyDecisionLayout(nodes, edges);
+                break;
+              case 'tree':
+                layoutedNodes = layoutAlgorithms.applyTreeLayout(nodes, edges);
+                break;
+              case 'grid':
+                layoutedNodes = layoutAlgorithms.applyGridLayout(nodes, edges);
+                break;
+              case 'circle':
+                layoutedNodes = layoutAlgorithms.applyCircleLayout(nodes, edges);
+                break;
+              default:
+                console.error('[FlowDiagram] Unknown layout type:', layoutType);
+                return;
+            }
+
+            if (layoutedNodes) {
+              setNodes(layoutedNodes);
+              console.log('[FlowDiagram] Layout applied successfully');
+            }
+          },
           onError: (message) => {
             console.error('[FlowDiagram] Command error:', message);
             if (onCommandError) {
@@ -279,8 +340,11 @@ const FlowDiagram = ({
           console.log('[FlowDiagram] Command executed successfully');
         }
       });
+
+      // Update previous commands
+      prevCommandsRef.current = commands;
     }
-  }, [commands, nodes, onCommandError, setNodes]);
+  }, [commands, nodes, edges, onCommandError]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge({

@@ -327,4 +327,31 @@ export default class TrustQueryDraw {
     }
     console.log('[TrustQueryDraw] Diagram cleared');
   }
+
+  /**
+   * Add a node directly to the canvas without using textarea
+   * @param {string} shapeType - The type of shape (rectangle, square, circle, diamond)
+   */
+  addNode(shapeType) {
+    const mode = this.options.mode();
+    if (mode === 'off') {
+      console.warn('[TrustQueryDraw] Cannot add node - mode is OFF');
+      return;
+    }
+
+    // Get current nodes to determine next node number
+    const { nodes } = this.diagramParser.getNodesAndEdges(this.diagramHistory.join('\n'));
+    const nextNodeNumber = nodes.length + 1;
+
+    // Create node ID with shape type and node number
+    const nodeId = shapeType === 'rectangle' ? `${nextNodeNumber}` : `${shapeType}:${nextNodeNumber}`;
+
+    // Add node to diagram history
+    this.diagramHistory.push(nodeId);
+
+    // Re-render
+    this.scan();
+
+    console.log(`[TrustQueryDraw] Added ${shapeType} node: ${nodeId}`);
+  }
 }

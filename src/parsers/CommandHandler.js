@@ -1,17 +1,22 @@
 /**
- * CommandHandler - Handles special commands starting with @
+ * CommandHandler - Handles special commands
  * Commands are non-persistent and consumed after execution
  *
  * Supported commands:
  * - @node_id - Opens style inspector for the specified node (by ID)
  * - @:number - Opens style inspector for the specified node (by node number)
  * - @node_id fill:#color border:#color - Apply styles directly (future)
+ * - =rename(oldId, newLabel) - Rename a node
+ * - =layout(decision) - Apply decision layout
+ * - =layout(tree) - Apply tree layout
  */
 export class CommandHandler {
   constructor() {
     // Regex to match @commands
-    // Matches: @node_id or @node_id with optional parameters
-    this.commandPattern = /^@(\S+)(.*)$/;
+    this.atCommandPattern = /^@(\S+)(.*)$/;
+
+    // Regex to match =commands with parentheses: =command(args)
+    this.equalsCommandPattern = /^=(\w+)\s*\(([^)]*)\)$/;
   }
 
   /**
@@ -21,11 +26,37 @@ export class CommandHandler {
    */
   detectCommand(input) {
     const trimmed = input.trim();
-    const match = trimmed.match(this.commandPattern);
 
-    if (match) {
-      const nodeId = match[1];
-      const params = match[2].trim();
+    // Check for =commands first (e.g., =rename(old, new) or =layout(decision))
+    const equalsMatch = trimmed.match(this.equalsCommandPattern);
+    if (equalsMatch) {
+      const commandName = equalsMatch[1]; // e.g., "rename" or "layout"
+      const argsString = equalsMatch[2]; // e.g., "old, new" or "decision"
+
+      // Parse arguments (split by comma and trim)
+      const args = argsString.split(',').map(arg => arg.trim());
+
+      if (commandName === 'rename') {
+        return {
+          type: 'rename',
+          oldId: args[0],
+          newLabel: args[1] || '',
+          rawCommand: trimmed,
+        };
+      } else if (commandName === 'layout') {
+        return {
+          type: 'layout',
+          layoutType: args[0] || 'tree',
+          rawCommand: trimmed,
+        };
+      }
+    }
+
+    // Check for @commands (e.g., @node_id)
+    const atMatch = trimmed.match(this.atCommandPattern);
+    if (atMatch) {
+      const nodeId = atMatch[1];
+      const params = atMatch[2].trim();
 
       return {
         type: 'openStyleInspector',
@@ -110,13 +141,84 @@ export class CommandHandler {
    * Execute a command
    * @param {Object} command - Command object
    * @param {Array} nodes - Array of existing nodes
-   * @param {Function} onOpenStyleInspector - Callback to open style inspector
-   * @param {Function} onSelectNode - Callback to select node
-   * @param {Function} onError - Callback for errors
+   * @param {Object} callbacks - Callback functions
    * @returns {boolean} True if command executed successfully
    */
   executeCommand(command, nodes, callbacks = {}) {
-    const { onOpenStyleInspector, onSelectNode, onError, onApplyStyle } = callbacks;
+    const { onOpenStyleInspector, onSelectNode, onError, onApplyStyle, onRenameNode, onApplyLayout } = callbacks;
+
+    console.log(`[CommandHandler] Executing command:`, command);
+
+    // Handle different command types
+    switch (command.type) {
+      case 'rename':
+        return this.executeRenameCommand(command, nodes, { onRenameNode, onError });
+
+      case 'layout':
+        return this.executeLayoutCommand(command, nodes, { onApplyLayout, onError });
+
+      case 'openStyleInspector':
+        return this.executeStyleInspectorCommand(command, nodes, { onOpenStyleInspector, onSelectNode, onApplyStyle, onError });
+
+      default:
+        console.error(`[CommandHandler] Unknown command type: ${command.type}`);
+        return false;
+    }
+  }
+
+  /**
+   * Execute rename command
+   */
+  executeRenameCommand(command, nodes, callbacks = {}) {
+    const { onRenameNode, onError } = callbacks;
+
+    // Find the node
+    const node = this.findNode(command.oldId, nodes);
+
+    if (!node) {
+      if (onError) {
+        onError(`Node '${command.oldId}' not found`);
+      }
+      console.error(`[CommandHandler] Node '${command.oldId}' not found`);
+      return false;
+    }
+
+    if (!command.newLabel) {
+      if (onError) {
+        onError(`New label is required for rename command`);
+      }
+      return false;
+    }
+
+    console.log(`[CommandHandler] Renaming node '${node.id}' to '${command.newLabel}'`);
+
+    if (onRenameNode) {
+      onRenameNode(node.id, command.newLabel);
+    }
+
+    return true;
+  }
+
+  /**
+   * Execute layout command
+   */
+  executeLayoutCommand(command, nodes, callbacks = {}) {
+    const { onApplyLayout, onError } = callbacks;
+
+    console.log(`[CommandHandler] Applying layout: ${command.layoutType}`);
+
+    if (onApplyLayout) {
+      onApplyLayout(command.layoutType, nodes);
+    }
+
+    return true;
+  }
+
+  /**
+   * Execute style inspector command
+   */
+  executeStyleInspectorCommand(command, nodes, callbacks = {}) {
+    const { onOpenStyleInspector, onSelectNode, onApplyStyle, onError } = callbacks;
 
     // Find the node
     const node = this.findNode(command.nodeId, nodes);

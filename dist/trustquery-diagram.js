@@ -25211,6 +25211,7 @@ const nodeDefaults = {
     border: '1px solid #1a192b',
     background: '#fff',
     minWidth: '60px',
+    minHeight: '60px',
     fontSize: '11px',
     textAlign: 'center',
     display: 'flex',
@@ -40432,19 +40433,24 @@ class EdgeBuilder {
 }
 
 /**
- * CommandHandler - Handles special commands starting with @
+ * CommandHandler - Handles special commands
  * Commands are non-persistent and consumed after execution
  *
  * Supported commands:
  * - @node_id - Opens style inspector for the specified node (by ID)
  * - @:number - Opens style inspector for the specified node (by node number)
  * - @node_id fill:#color border:#color - Apply styles directly (future)
+ * - =rename(oldId, newLabel) - Rename a node
+ * - =layout(decision) - Apply decision layout
+ * - =layout(tree) - Apply tree layout
  */
 class CommandHandler {
   constructor() {
     // Regex to match @commands
-    // Matches: @node_id or @node_id with optional parameters
-    this.commandPattern = /^@(\S+)(.*)$/;
+    this.atCommandPattern = /^@(\S+)(.*)$/;
+
+    // Regex to match =commands with parentheses: =command(args)
+    this.equalsCommandPattern = /^=(\w+)\s*\(([^)]*)\)$/;
   }
 
   /**
@@ -40454,10 +40460,36 @@ class CommandHandler {
    */
   detectCommand(input) {
     const trimmed = input.trim();
-    const match = trimmed.match(this.commandPattern);
-    if (match) {
-      const nodeId = match[1];
-      const params = match[2].trim();
+
+    // Check for =commands first (e.g., =rename(old, new) or =layout(decision))
+    const equalsMatch = trimmed.match(this.equalsCommandPattern);
+    if (equalsMatch) {
+      const commandName = equalsMatch[1]; // e.g., "rename" or "layout"
+      const argsString = equalsMatch[2]; // e.g., "old, new" or "decision"
+
+      // Parse arguments (split by comma and trim)
+      const args = argsString.split(',').map(arg => arg.trim());
+      if (commandName === 'rename') {
+        return {
+          type: 'rename',
+          oldId: args[0],
+          newLabel: args[1] || '',
+          rawCommand: trimmed
+        };
+      } else if (commandName === 'layout') {
+        return {
+          type: 'layout',
+          layoutType: args[0] || 'tree',
+          rawCommand: trimmed
+        };
+      }
+    }
+
+    // Check for @commands (e.g., @node_id)
+    const atMatch = trimmed.match(this.atCommandPattern);
+    if (atMatch) {
+      const nodeId = atMatch[1];
+      const params = atMatch[2].trim();
       return {
         type: 'openStyleInspector',
         nodeId,
@@ -40534,9 +40566,7 @@ class CommandHandler {
    * Execute a command
    * @param {Object} command - Command object
    * @param {Array} nodes - Array of existing nodes
-   * @param {Function} onOpenStyleInspector - Callback to open style inspector
-   * @param {Function} onSelectNode - Callback to select node
-   * @param {Function} onError - Callback for errors
+   * @param {Object} callbacks - Callback functions
    * @returns {boolean} True if command executed successfully
    */
   executeCommand(command, nodes, callbacks = {}) {
@@ -40544,7 +40574,92 @@ class CommandHandler {
       onOpenStyleInspector,
       onSelectNode,
       onError,
-      onApplyStyle
+      onApplyStyle,
+      onRenameNode,
+      onApplyLayout
+    } = callbacks;
+    console.log(`[CommandHandler] Executing command:`, command);
+
+    // Handle different command types
+    switch (command.type) {
+      case 'rename':
+        return this.executeRenameCommand(command, nodes, {
+          onRenameNode,
+          onError
+        });
+      case 'layout':
+        return this.executeLayoutCommand(command, nodes, {
+          onApplyLayout,
+          onError
+        });
+      case 'openStyleInspector':
+        return this.executeStyleInspectorCommand(command, nodes, {
+          onOpenStyleInspector,
+          onSelectNode,
+          onApplyStyle,
+          onError
+        });
+      default:
+        console.error(`[CommandHandler] Unknown command type: ${command.type}`);
+        return false;
+    }
+  }
+
+  /**
+   * Execute rename command
+   */
+  executeRenameCommand(command, nodes, callbacks = {}) {
+    const {
+      onRenameNode,
+      onError
+    } = callbacks;
+
+    // Find the node
+    const node = this.findNode(command.oldId, nodes);
+    if (!node) {
+      if (onError) {
+        onError(`Node '${command.oldId}' not found`);
+      }
+      console.error(`[CommandHandler] Node '${command.oldId}' not found`);
+      return false;
+    }
+    if (!command.newLabel) {
+      if (onError) {
+        onError(`New label is required for rename command`);
+      }
+      return false;
+    }
+    console.log(`[CommandHandler] Renaming node '${node.id}' to '${command.newLabel}'`);
+    if (onRenameNode) {
+      onRenameNode(node.id, command.newLabel);
+    }
+    return true;
+  }
+
+  /**
+   * Execute layout command
+   */
+  executeLayoutCommand(command, nodes, callbacks = {}) {
+    const {
+      onApplyLayout,
+      onError
+    } = callbacks;
+    console.log(`[CommandHandler] Applying layout: ${command.layoutType}`);
+    if (onApplyLayout) {
+      onApplyLayout(command.layoutType, nodes);
+    }
+    return true;
+  }
+
+  /**
+   * Execute style inspector command
+   */
+  executeStyleInspectorCommand(command, nodes, callbacks = {}) {
+    const {
+      onOpenStyleInspector,
+      onSelectNode,
+      onApplyStyle,
+      onError
     } = callbacks;
 
     // Find the node
@@ -40969,6 +41084,130 @@ class DiagramParser {
   }
 }
 
+/**
+ * Layout Algorithms - Position nodes according to different patterns
+ */
+
+const SPACING = {
+  horizontal: 200,
+  vertical: 150
+};
+
+/**
+ * Decision Layout
+ * Finds diamond nodes and arranges their connected nodes:
+ * - Input node to the left of diamond
+ * - True/Yes node to the right of diamond
+ * - False/No node below the diamond
+ *
+ * @param {Array} nodes - Current nodes
+ * @param {Array} edges - Current edges
+ * @returns {Array} Nodes with updated positions
+ */
+const applyDecisionLayout = (nodes, edges) => {
+  console.log('[DecisionLayout] Starting layout with nodes:', nodes.length, 'edges:', edges.length);
+
+  // Find diamond nodes
+  const diamondNodes = nodes.filter(n => n.type === 'diamond');
+  if (diamondNodes.length === 0) {
+    console.log('[DecisionLayout] No diamond nodes found');
+    return nodes;
+  }
+
+  // Create a copy of nodes to modify
+  const updatedNodes = [...nodes];
+  const nodeMap = new Map(updatedNodes.map(n => [n.id, n]));
+  diamondNodes.forEach(diamond => {
+    console.log('[DecisionLayout] Processing diamond:', diamond.id);
+
+    // Find edges connected to this diamond
+    const incomingEdges = edges.filter(e => e.target === diamond.id);
+    const outgoingEdges = edges.filter(e => e.source === diamond.id);
+    console.log('[DecisionLayout] Incoming edges:', incomingEdges.length, 'Outgoing:', outgoingEdges.length);
+
+    // Position diamond at a base position
+    const diamondX = 300;
+    const diamondY = 200;
+    diamond.position = {
+      x: diamondX,
+      y: diamondY
+    };
+
+    // Position input node(s) to the left
+    incomingEdges.forEach((edge, i) => {
+      const inputNode = nodeMap.get(edge.source);
+      if (inputNode) {
+        inputNode.position = {
+          x: diamondX - SPACING.horizontal,
+          y: diamondY + i * SPACING.vertical / 2
+        };
+        console.log('[DecisionLayout] Positioned input node:', inputNode.id, 'at', inputNode.position);
+      }
+    });
+
+    // Position output nodes based on edge labels
+    outgoingEdges.forEach(edge => {
+      const outputNode = nodeMap.get(edge.target);
+      if (!outputNode) return;
+      const label = (edge.label || '').toLowerCase();
+      if (label.includes('yes') || label.includes('true') || label === 'y' || label === 't') {
+        // True/Yes - position to the right
+        outputNode.position = {
+          x: diamondX + SPACING.horizontal,
+          y: diamondY
+        };
+        console.log('[DecisionLayout] Positioned TRUE node:', outputNode.id, 'at', outputNode.position);
+      } else if (label.includes('no') || label.includes('false') || label === 'n' || label === 'f') {
+        // False/No - position below
+        outputNode.position = {
+          x: diamondX,
+          y: diamondY + SPACING.vertical
+        };
+        console.log('[DecisionLayout] Positioned FALSE node:', outputNode.id, 'at', outputNode.position);
+      } else {
+        // No label or unknown - position first to right, second below
+        const isFirstOutput = outgoingEdges.indexOf(edge) === 0;
+        outputNode.position = isFirstOutput ? {
+          x: diamondX + SPACING.horizontal,
+          y: diamondY
+        } : {
+          x: diamondX,
+          y: diamondY + SPACING.vertical
+        };
+        console.log('[DecisionLayout] Positioned unlabeled node:', outputNode.id, 'at', outputNode.position);
+      }
+    });
+  });
+  return updatedNodes;
+};
+
+/**
+ * Tree Layout (hierarchical top-down)
+ * TODO: Implement tree layout
+ */
+const applyTreeLayout = (nodes, edges) => {
+  console.log('[TreeLayout] Not yet implemented');
+  return nodes;
+};
+
+/**
+ * Grid Layout
+ * TODO: Implement grid layout
+ */
+const applyGridLayout = (nodes, edges) => {
+  console.log('[GridLayout] Not yet implemented');
+  return nodes;
+};
+
+/**
+ * Circle Layout
+ * TODO: Implement circle layout
+ */
+const applyCircleLayout = (nodes, edges) => {
+  console.log('[CircleLayout] Not yet implemented');
+  return nodes;
+};
+
 const nodeTypes = {
   rectangle: RectangleNode,
   circle: CircleNode,
@@ -41056,6 +41295,7 @@ const FlowDiagram = ({
   });
   const reactFlowInstance = reactExports.useRef(null);
   const diagramParserRef = reactExports.useRef(new DiagramParser());
+  const prevCommandsRef = reactExports.useRef([]);
 
   // Update nodes when initialNodes changes
   reactExports.useEffect(() => {
@@ -41175,9 +41415,18 @@ const FlowDiagram = ({
   // Execute commands when they change
   reactExports.useEffect(() => {
     if (commands && commands.length > 0 && nodes.length > 0) {
-      console.log('[FlowDiagram] Executing commands:', commands);
+      console.log('[FlowDiagram] All commands:', commands);
+      console.log('[FlowDiagram] Previous commands:', prevCommandsRef.current);
+
+      // Find new commands that weren't in the previous array
+      const newCommands = commands.filter(cmd => !prevCommandsRef.current.some(prevCmd => JSON.stringify(prevCmd) === JSON.stringify(cmd)));
+      console.log('[FlowDiagram] New commands to execute:', newCommands);
+      if (newCommands.length === 0) {
+        console.log('[FlowDiagram] No new commands to execute');
+        return;
+      }
       const commandHandler = diagramParserRef.current.getCommandHandler();
-      commands.forEach(command => {
+      newCommands.forEach(command => {
         console.log('[FlowDiagram] Executing command:', command);
         const success = commandHandler.executeCommand(command, nodes, {
           onSelectNode: node => {
@@ -41206,6 +41455,46 @@ const FlowDiagram = ({
               return n;
             }));
           },
+          onRenameNode: (nodeId, newLabel) => {
+            console.log('[FlowDiagram] Renaming node from command:', nodeId, 'to', newLabel);
+            setNodes(nds => nds.map(n => {
+              if (n.id === nodeId) {
+                return {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    label: newLabel
+                  }
+                };
+              }
+              return n;
+            }));
+          },
+          onApplyLayout: (layoutType, currentNodes) => {
+            console.log('[FlowDiagram] Applying layout from command:', layoutType);
+            let layoutedNodes;
+            switch (layoutType) {
+              case 'decision':
+                layoutedNodes = applyDecisionLayout(nodes, edges);
+                break;
+              case 'tree':
+                layoutedNodes = applyTreeLayout(nodes);
+                break;
+              case 'grid':
+                layoutedNodes = applyGridLayout(nodes);
+                break;
+              case 'circle':
+                layoutedNodes = applyCircleLayout(nodes);
+                break;
+              default:
+                console.error('[FlowDiagram] Unknown layout type:', layoutType);
+                return;
+            }
+            if (layoutedNodes) {
+              setNodes(layoutedNodes);
+              console.log('[FlowDiagram] Layout applied successfully');
+            }
+          },
           onError: message => {
             console.error('[FlowDiagram] Command error:', message);
             if (onCommandError) {
@@ -41217,8 +41506,11 @@ const FlowDiagram = ({
           console.log('[FlowDiagram] Command executed successfully');
         }
       });
+
+      // Update previous commands
+      prevCommandsRef.current = commands;
     }
-  }, [commands, nodes, onCommandError, setNodes]);
+  }, [commands, nodes, edges, onCommandError]);
   const onConnect = reactExports.useCallback(params => setEdges(eds => addEdge({
     ...params,
     type: 'smoothstep',
@@ -42745,6 +43037,34 @@ class TrustQueryDraw {
       this.drawHandler.renderNodes([], [], mode);
     }
     console.log('[TrustQueryDraw] Diagram cleared');
+  }
+
+  /**
+   * Add a node directly to the canvas without using textarea
+   * @param {string} shapeType - The type of shape (rectangle, square, circle, diamond)
+   */
+  addNode(shapeType) {
+    const mode = this.options.mode();
+    if (mode === 'off') {
+      console.warn('[TrustQueryDraw] Cannot add node - mode is OFF');
+      return;
+    }
+
+    // Get current nodes to determine next node number
+    const {
+      nodes
+    } = this.diagramParser.getNodesAndEdges(this.diagramHistory.join('\n'));
+    const nextNodeNumber = nodes.length + 1;
+
+    // Create node ID with shape type and node number
+    const nodeId = shapeType === 'rectangle' ? `${nextNodeNumber}` : `${shapeType}:${nextNodeNumber}`;
+
+    // Add node to diagram history
+    this.diagramHistory.push(nodeId);
+
+    // Re-render
+    this.scan();
+    console.log(`[TrustQueryDraw] Added ${shapeType} node: ${nodeId}`);
   }
 }
 

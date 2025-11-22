@@ -9,6 +9,7 @@ export const nodeDefaults = {
     border: '1px solid #1a192b',
     background: '#fff',
     minWidth: '60px',
+    minHeight: '60px',
     fontSize: '11px',
     textAlign: 'center',
     display: 'flex',
