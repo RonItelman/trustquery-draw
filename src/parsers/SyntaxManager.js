@@ -3,6 +3,7 @@ import { EdgeSyntaxParser } from './EdgeSyntaxParser.js';
 import { NodeBuilder } from './NodeBuilder.js';
 import { EdgeBuilder } from './EdgeBuilder.js';
 import { CommandHandler } from './CommandHandler.js';
+import { IDManager } from './IDManager.js';
 
 /**
  * SyntaxManager - Main orchestrator for parsing diagram syntax
@@ -20,7 +21,8 @@ export class SyntaxManager {
   constructor() {
     this.quotedStringParser = new QuotedStringParser();
     this.edgeSyntaxParser = new EdgeSyntaxParser();
-    this.nodeBuilder = new NodeBuilder();
+    this.idManager = new IDManager();
+    this.nodeBuilder = new NodeBuilder(this.idManager);
     this.edgeBuilder = new EdgeBuilder();
     this.commandHandler = new CommandHandler();
     this.detectedCommands = [];
@@ -123,5 +125,21 @@ export class SyntaxManager {
    */
   getCommandHandler() {
     return this.commandHandler;
+  }
+
+  /**
+   * Get ID manager
+   * @returns {IDManager} ID manager instance
+   */
+  getIDManager() {
+    return this.idManager;
+  }
+
+  /**
+   * Clear ID mappings (called when canvas is cleared)
+   */
+  clearIDMappings() {
+    this.idManager.clear();
+    console.log('[SyntaxManager] ID mappings cleared');
   }
 }

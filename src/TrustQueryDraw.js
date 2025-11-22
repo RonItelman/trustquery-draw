@@ -317,6 +317,10 @@ export default class TrustQueryDraw {
    */
   clearDiagram() {
     this.diagramHistory = [];
+
+    // Clear ID mappings
+    this.diagramParser.getSyntaxManager().clearIDMappings();
+
     const mode = this.options.mode();
     if (mode !== 'off') {
       this.drawHandler.renderNodes([], [], mode);

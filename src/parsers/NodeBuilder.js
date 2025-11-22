@@ -3,9 +3,10 @@
  * Handles node creation and shape type detection
  */
 export class NodeBuilder {
-  constructor() {
+  constructor(idManager = null) {
     this.nodes = new Map();
     this.nodeOrder = [];
+    this.idManager = idManager;
 
     // Shape keywords that map to specific node types
     this.shapeKeywords = {
@@ -29,15 +30,19 @@ export class NodeBuilder {
     const type = this.shapeKeywords[lowerLabel] || 'rectangle';
 
     if (!this.nodes.has(trimmed)) {
+      // Assign numeric ID if IDManager is available
+      const numericId = this.idManager ? this.idManager.assignId(trimmed) : null;
+
       const node = {
         id: trimmed,
         label: trimmed,
         type: type,
+        numericId: numericId,
       };
 
       this.nodes.set(trimmed, node);
       this.nodeOrder.push(trimmed);
-      console.log(`[NodeBuilder] Created node: ${trimmed} (type: ${type}, order: ${this.nodeOrder.length - 1})`);
+      console.log(`[NodeBuilder] Created node: ${trimmed} (type: ${type}, numericId: ${numericId}, order: ${this.nodeOrder.length - 1})`);
     } else {
       console.log(`[NodeBuilder] Node already exists: ${trimmed}`);
     }

@@ -9,7 +9,7 @@ const CircleNode = ({ data, selected, style = {}, id }) => {
       selected={selected}
       nodeType="circle"
       uniformScale={true} // Circles must maintain aspect ratio
-      renderShape={({ nodeStyle, renderLabel, renderSelection, renderStyleInspector, renderHandles }) => (
+      renderShape={({ nodeStyle, renderLabel, renderSelection, renderStyleInspector, renderNumericId, renderHandles }) => (
         <>
           {renderSelection()}
           {renderStyleInspector()}
@@ -19,6 +19,7 @@ const CircleNode = ({ data, selected, style = {}, id }) => {
             className="node-content trustquery-diagram-node-label"
             style={{...nodeStyle, whiteSpace: 'pre-wrap'}}
           >
+            {renderNumericId()}
             {renderLabel()}
           </div>
 

@@ -41,6 +41,12 @@ const customStyles = `
     opacity: 1 !important;
   }
 
+  /* Default cursor for pane (normal mode) */
+  .react-flow__pane {
+    cursor: default !important;
+  }
+
+  /* Grab cursor when spacebar is held */
   .tq-flow-space-pan .react-flow__pane {
     cursor: grab !important;
   }
@@ -186,15 +192,6 @@ const FlowDiagram = ({
     }
   }, [nodes, edges]);
 
-  // Trigger fitView when nodes or edges change
-  useEffect(() => {
-    if (nodes.length > 0 && reactFlowInstance.current) {
-      // Use setTimeout to ensure nodes are rendered before fitting view
-      setTimeout(() => {
-        reactFlowInstance.current.fitView({ padding: 0.2, duration: 200 });
-      }, 50);
-    }
-  }, [nodes, edges]);
 
   // Track CMD (Mac) or CTRL (Windows) key state
   useEffect(() => {
@@ -422,10 +419,10 @@ const FlowDiagram = ({
         proOptions={{ hideAttribution: true }}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         zoomOnScroll={isModifierKeyPressed}
-        panOnScroll={false}
+        panOnScroll={true}
         zoomOnPinch={true}
         panOnDrag={isSpacePressed}
-        preventScrolling={isModifierKeyPressed}
+        preventScrolling={true}
       >
         <Background variant="dots" gap={12} size={1} />
       </ReactFlow>

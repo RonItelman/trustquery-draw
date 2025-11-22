@@ -20,7 +20,7 @@ const DiamondNode = ({ data, selected, style = {}, id }) => {
           minSize: 60,
         };
       }}
-      renderShape={({ nodeStyle, estimatedSize, renderLabel, renderSelection, renderStyleInspector, renderHandles }) => {
+      renderShape={({ nodeStyle, estimatedSize, renderLabel, renderSelection, renderStyleInspector, renderNumericId, renderHandles }) => {
         // Extract background and border for SVG
         const backgroundColor = nodeStyle.background;
         const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
@@ -63,6 +63,9 @@ const DiamondNode = ({ data, selected, style = {}, id }) => {
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
+
+            {/* Numeric ID */}
+            {renderNumericId()}
 
             {/* Node Content */}
             {renderLabel()}

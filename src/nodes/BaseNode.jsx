@@ -181,6 +181,29 @@ const BaseNode = ({
     )
   );
 
+  // Numeric ID display (top-left corner inside node)
+  const renderNumericId = () => (
+    data.numericId != null && (
+      <div
+        style={{
+          position: 'absolute',
+          top: 4,
+          left: 6,
+          fontSize: '9px',
+          color: '#999',
+          fontWeight: '500',
+          pointerEvents: 'none',
+          zIndex: 2,
+          fontFamily: 'monospace',
+          userSelect: 'none',
+        }}
+        title={`Node ID: ${data.numericId}`}
+      >
+        :{data.numericId}
+      </div>
+    )
+  );
+
   // Connection handles (used by all shapes)
   const renderHandles = () => (
     <>
@@ -196,6 +219,7 @@ const BaseNode = ({
     renderLabel,
     renderSelection,
     renderStyleInspector,
+    renderNumericId,
     renderHandles,
   });
 };

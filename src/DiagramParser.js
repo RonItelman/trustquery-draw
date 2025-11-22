@@ -60,7 +60,10 @@ export class DiagramParser {
         id: node.id,
         type: node.type,
         position: position,
-        data: { label: node.label },
+        data: {
+          label: node.label,
+          numericId: node.numericId,
+        },
       };
     });
   }
@@ -90,5 +93,13 @@ export class DiagramParser {
    */
   getCommandHandler() {
     return this.syntaxManager.getCommandHandler();
+  }
+
+  /**
+   * Get syntax manager instance
+   * @returns {SyntaxManager} Syntax manager instance
+   */
+  getSyntaxManager() {
+    return this.syntaxManager;
   }
 }
