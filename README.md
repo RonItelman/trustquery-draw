@@ -29,7 +29,7 @@ npm install @trustquery/trustquery-draw
 <!DOCTYPE html>
 <html>
 <head>
-  <title>TrustQuery Draw Demo</title>
+  <title>TrustQuery-Diagram</title>
 </head>
 <body>
   <div id="output-container"></div>

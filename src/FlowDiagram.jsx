@@ -53,6 +53,20 @@ const customStyles = `
     fill: #f5f5f5 !important;
   }
 
+  /* Dim unconnected edges when a node is selected */
+  .react-flow__edge {
+    transition: opacity 0.2s ease;
+  }
+
+  .react-flow__edge.dimmed {
+    opacity: 0.2 !important;
+  }
+
+  .react-flow__edge.dimmed .react-flow__edge-textbg,
+  .react-flow__edge.dimmed .react-flow__edge-text {
+    opacity: 0.3 !important;
+  }
+
   /* Default cursor for pane (normal mode) */
   .react-flow__pane {
     cursor: default !important;
@@ -517,6 +531,22 @@ const FlowDiagram = ({
     },
   }));
 
+  // Dim edges that aren't connected to the selected node
+  const edgesWithHighlight = edges.map(edge => {
+    if (!selectedNode) {
+      // No node selected, show all edges normally
+      return edge;
+    }
+
+    // Check if this edge is connected to the selected node
+    const isConnected = edge.source === selectedNode.id || edge.target === selectedNode.id;
+
+    return {
+      ...edge,
+      className: isConnected ? '' : 'dimmed',
+    };
+  });
+
   return (
     <div
       className={`tq-flow-diagram-wrapper ${isSpacePressed ? 'tq-flow-space-pan' : ''}`}
@@ -525,7 +555,7 @@ const FlowDiagram = ({
       <style>{customStyles}</style>
       <ReactFlow
         nodes={nodesWithCallback}
-        edges={edges}
+        edges={edgesWithHighlight}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}

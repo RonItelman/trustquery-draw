@@ -41511,18 +41511,34 @@ const applyTreeLayout = (nodes, edges) => {
       }
     }
   };
+
+  // First pass: center parents based on initial child positions
   roots.forEach(root => centerParents(root.id));
 
-  // Calculate subtree bounds (rightmost child position)
+  // Helper: Estimate node width based on text length
+  const estimateNodeWidth = nodeId => {
+    // Approximate character width at 11px font size in system fonts: ~13px per char
+    // (Generous estimate to account for font metrics, kerning, whitespace, and browser rendering)
+    // Plus padding (12px left + 12px right = 24px) + border (1px * 2 = 2px)
+    const charWidth = 13;
+    const padding = 26; // 24px padding + 2px border
+    const estimatedWidth = nodeId.length * charWidth + padding;
+
+    // Return max of estimated width and minWidth (60px for rectangles)
+    return Math.max(estimatedWidth, 60);
+  };
+
+  // Calculate subtree bounds (rightmost edge including node width)
   const getSubtreeRight = nodeId => {
     const node = nodeMap.get(nodeId);
     if (!node) return 0;
     const nodeChildren = children.get(nodeId);
     if (!nodeChildren || nodeChildren.length === 0) {
-      return node.position.x;
+      // Return right edge: position + width
+      return node.position.x + estimateNodeWidth(nodeId);
     }
 
-    // Return the rightmost position of all children
+    // Return the rightmost edge of all children
     return Math.max(...nodeChildren.map(childId => getSubtreeRight(childId)));
   };
   const subtreeGap = 100; // Extra gap between subtrees
@@ -41541,6 +41557,35 @@ const applyTreeLayout = (nodes, edges) => {
       const requiredMinX = prevSubtreeRight + subtreeGap;
       if (curr.position.x < requiredMinX) {
         // Push current node and its entire subtree to the right
+        const shift = requiredMinX - curr.position.x;
+        const shiftSubtree = (nodeId, shiftAmount) => {
+          const node = nodeMap.get(nodeId);
+          if (node) {
+            node.position.x += shiftAmount;
+            const nodeChildren = children.get(nodeId);
+            if (nodeChildren) {
+              nodeChildren.forEach(childId => shiftSubtree(childId, shiftAmount));
+            }
+          }
+        };
+        shiftSubtree(curr.id, shift);
+      }
+    }
+  });
+
+  // Second pass: re-center parents after children have been repositioned by spacing
+  roots.forEach(root => centerParents(root.id));
+
+  // Third pass: fix any overlaps created by re-centering parents
+  // Only check parent-level nodes (non-leaf nodes with children)
+  nodesByLevel.forEach((nodeIds, level) => {
+    const sortedNodes = nodeIds.map(id => nodeMap.get(id)).filter(Boolean).sort((a, b) => a.position.x - b.position.x);
+    for (let i = 1; i < sortedNodes.length; i++) {
+      const prev = sortedNodes[i - 1];
+      const curr = sortedNodes[i];
+      const prevSubtreeRight = getSubtreeRight(prev.id);
+      const requiredMinX = prevSubtreeRight + subtreeGap;
+      if (curr.position.x < requiredMinX) {
         const shift = requiredMinX - curr.position.x;
         const shiftSubtree = (nodeId, shiftAmount) => {
           const node = nodeMap.get(nodeId);
@@ -41606,6 +41651,20 @@ const customStyles = `
   /* Edge label backgrounds */
   .react-flow__edge-textbg {
     fill: #f5f5f5 !important;
+  }
+
+  /* Dim unconnected edges when a node is selected */
+  .react-flow__edge {
+    transition: opacity 0.2s ease;
+  }
+
+  .react-flow__edge.dimmed {
+    opacity: 0.2 !important;
+  }
+
+  .react-flow__edge.dimmed .react-flow__edge-textbg,
+  .react-flow__edge.dimmed .react-flow__edge-text {
+    opacity: 0.3 !important;
   }
 
   /* Default cursor for pane (normal mode) */
@@ -42041,6 +42100,21 @@ const FlowDiagram = ({
       onLabelChange: handleLabelChange
     }
   }));
+
+  // Dim edges that aren't connected to the selected node
+  const edgesWithHighlight = edges.map(edge => {
+    if (!selectedNode) {
+      // No node selected, show all edges normally
+      return edge;
+    }
+
+    // Check if this edge is connected to the selected node
+    const isConnected = edge.source === selectedNode.id || edge.target === selectedNode.id;
+    return {
+      ...edge,
+      className: isConnected ? '' : 'dimmed'
+    };
+  });
   return /*#__PURE__*/React.createElement("div", {
     className: `tq-flow-diagram-wrapper ${isSpacePressed ? 'tq-flow-space-pan' : ''}`,
     style: {
@@ -42051,7 +42125,7 @@ const FlowDiagram = ({
     }
   }, /*#__PURE__*/React.createElement("style", null, customStyles), /*#__PURE__*/React.createElement(ReactFlow, {
     nodes: nodesWithCallback,
-    edges: edges,
+    edges: edgesWithHighlight,
     nodeTypes: nodeTypes,
     edgeTypes: edgeTypes,
     onNodesChange: handleNodesChange,
