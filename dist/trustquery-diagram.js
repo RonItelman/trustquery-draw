@@ -25361,10 +25361,10 @@ const BaseNode = ({
     ...styleOverrides
   };
   const [isEditing, setIsEditing] = reactExports.useState(false);
-  const [editedLabel, setEditedLabel] = reactExports.useState(data.label);
+  const [editedLabel, setEditedLabel] = reactExports.useState(id);
 
   // Calculate size (allow shapes to override)
-  const estimatedSize = calculateSize ? calculateSize(data.label, nodeStyle) : null;
+  const estimatedSize = calculateSize ? calculateSize(id, nodeStyle) : null;
   const {
     handleResizeStart
   } = useResize({
@@ -25396,7 +25396,7 @@ const BaseNode = ({
       handleLabelSubmit();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
-      setEditedLabel(data.label);
+      setEditedLabel(id);
     }
   };
 
@@ -25430,7 +25430,7 @@ const BaseNode = ({
       whiteSpace: 'pre-wrap'
     },
     className: "nodrag"
-  }) : data.label);
+  }) : id);
 
   // Selection indicators (used by all shapes)
   const renderSelection = () => selected && /*#__PURE__*/React.createElement("div", {
@@ -25526,8 +25526,8 @@ const BaseNode = ({
     title: "Open Style Inspector"
   }, "\u2699");
 
-  // Numeric ID display (top-left corner inside node)
-  const renderNumericId = () => data.numericId != null && /*#__PURE__*/React.createElement("div", {
+  // Node number display (top-left corner inside node)
+  const renderNodeNumber = () => data.nodeNumber != null && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 4,
@@ -25540,8 +25540,8 @@ const BaseNode = ({
       fontFamily: 'monospace',
       userSelect: 'none'
     },
-    title: `Node ID: ${data.numericId}`
-  }, ":", data.numericId);
+    title: `Node #${data.nodeNumber} - Reference as :${data.nodeNumber}`
+  }, ":", data.nodeNumber);
 
   // Connection handles (used by all shapes)
   const renderHandles = () => /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Handle$1, {
@@ -25561,7 +25561,7 @@ const BaseNode = ({
     renderLabel,
     renderSelection,
     renderStyleInspector,
-    renderNumericId,
+    renderNodeNumber,
     renderHandles
   });
 };
@@ -25589,7 +25589,7 @@ const RectangleNode = ({
       renderLabel,
       renderSelection,
       renderStyleInspector,
-      renderNumericId,
+      renderNodeNumber,
       renderHandles
     }) => /*#__PURE__*/React.createElement(React.Fragment, null, renderSelection(), renderStyleInspector(), /*#__PURE__*/React.createElement("div", {
       className: "node-content trustquery-diagram-node-label",
@@ -25597,7 +25597,7 @@ const RectangleNode = ({
         ...nodeStyle,
         whiteSpace: 'pre-wrap'
       }
-    }, renderNumericId(), renderLabel()), renderHandles())
+    }, renderNodeNumber(), renderLabel()), renderHandles())
   });
 };
 
@@ -25619,7 +25619,7 @@ const CircleNode = ({
       renderLabel,
       renderSelection,
       renderStyleInspector,
-      renderNumericId,
+      renderNodeNumber,
       renderHandles
     }) => /*#__PURE__*/React.createElement(React.Fragment, null, renderSelection(), renderStyleInspector(), /*#__PURE__*/React.createElement("div", {
       className: "node-content trustquery-diagram-node-label",
@@ -25627,7 +25627,7 @@ const CircleNode = ({
         ...nodeStyle,
         whiteSpace: 'pre-wrap'
       }
-    }, renderNumericId(), renderLabel()), renderHandles())
+    }, renderNodeNumber(), renderLabel()), renderHandles())
   });
 };
 
@@ -25649,7 +25649,7 @@ const SquareNode = ({
       renderLabel,
       renderSelection,
       renderStyleInspector,
-      renderNumericId,
+      renderNodeNumber,
       renderHandles
     }) => /*#__PURE__*/React.createElement(React.Fragment, null, renderSelection(), renderStyleInspector(), /*#__PURE__*/React.createElement("div", {
       className: "node-content trustquery-diagram-node-label",
@@ -25657,7 +25657,7 @@ const SquareNode = ({
         ...nodeStyle,
         whiteSpace: 'pre-wrap'
       }
-    }, renderNumericId(), renderLabel()), renderHandles())
+    }, renderNodeNumber(), renderLabel()), renderHandles())
   });
 };
 
@@ -25691,7 +25691,7 @@ const DiamondNode = ({
       renderLabel,
       renderSelection,
       renderStyleInspector,
-      renderNumericId,
+      renderNodeNumber,
       renderHandles
     }) => {
       // Extract background and border for SVG
@@ -25729,7 +25729,7 @@ const DiamondNode = ({
         stroke: borderColor,
         strokeWidth: borderWidth,
         vectorEffect: "non-scaling-stroke"
-      })), renderNumericId(), renderLabel(), renderHandles());
+      })), renderNodeNumber(), renderLabel(), renderHandles());
     }
   });
 };
@@ -25919,7 +25919,7 @@ const StyleInspector = ({
       fontWeight: 500,
       color: '#666'
     }
-  }, "Node: ", selectedNode.data.label)), /*#__PURE__*/React.createElement("div", {
+  }, "Node: ", selectedNode.id)), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: '12px'
     }
@@ -40302,31 +40302,43 @@ class NodeBuilder {
 
   /**
    * Create or get a node
-   * @param {string} label - Node label
-   * @returns {string} Node ID
+   * @param {string} label - Node label (or :N reference)
+   * @returns {string} Node ID (resolved label)
    */
   ensureNode(label) {
     const trimmed = label.trim();
 
-    // Detect shape type based on the label text itself
-    const lowerLabel = trimmed.toLowerCase();
-    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
-    if (!this.nodes.has(trimmed)) {
-      // Assign numeric ID if IDManager is available
-      const numericId = this.idManager ? this.idManager.assignId(trimmed) : null;
-      const node = {
-        id: trimmed,
-        label: trimmed,
-        type: type,
-        numericId: numericId
-      };
-      this.nodes.set(trimmed, node);
-      this.nodeOrder.push(trimmed);
-      console.log(`[NodeBuilder] Created node: ${trimmed} (type: ${type}, numericId: ${numericId}, order: ${this.nodeOrder.length - 1})`);
-    } else {
-      console.log(`[NodeBuilder] Node already exists: ${trimmed}`);
+    // Resolve :N references if IDManager is available
+    let resolvedLabel = trimmed;
+    if (this.idManager && trimmed.startsWith(':')) {
+      try {
+        resolvedLabel = this.idManager.resolveReference(trimmed);
+        console.log(`[NodeBuilder] Resolved reference ${trimmed} -> "${resolvedLabel}"`);
+      } catch (error) {
+        console.error(`[NodeBuilder] Error resolving reference: ${error.message}`);
+        throw error;
+      }
     }
-    return trimmed;
+
+    // Detect shape type based on the resolved label text
+    const lowerLabel = resolvedLabel.toLowerCase();
+    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
+    if (!this.nodes.has(resolvedLabel)) {
+      // Assign node number if IDManager is available
+      const nodeNumber = this.idManager ? this.idManager.assignId(resolvedLabel) : null;
+      const node = {
+        id: resolvedLabel,
+        // ReactFlow ID (the label)
+        type: type,
+        nodeNumber: nodeNumber // Sequential reference number
+      };
+      this.nodes.set(resolvedLabel, node);
+      this.nodeOrder.push(resolvedLabel);
+      console.log(`[NodeBuilder] Created node: ${resolvedLabel} (type: ${type}, nodeNumber: ${nodeNumber}, order: ${this.nodeOrder.length - 1})`);
+    } else {
+      console.log(`[NodeBuilder] Node already exists: ${resolvedLabel}`);
+    }
+    return resolvedLabel;
   }
 
   /**
@@ -40901,8 +40913,7 @@ class DiagramParser {
         type: node.type,
         position: position,
         data: {
-          label: node.label,
-          numericId: node.numericId
+          nodeNumber: node.nodeNumber
         }
       };
     });
@@ -41011,7 +41022,7 @@ const FlowDiagram = ({
       nodes: nodes.map(node => ({
         id: node.id,
         type: node.type,
-        label: node.data.label,
+        nodeNumber: node.data.nodeNumber,
         position: node.position,
         styleOverrides: node.data.styleOverrides
       })),
@@ -41105,7 +41116,7 @@ const FlowDiagram = ({
         nodes: nodes.map(node => ({
           id: node.id,
           type: node.type,
-          label: node.data.label,
+          nodeNumber: node.data.nodeNumber,
           position: node.position,
           styleOverrides: node.data.styleOverrides
         })),

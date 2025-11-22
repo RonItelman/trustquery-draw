@@ -61,8 +61,7 @@ export class DiagramParser {
         type: node.type,
         position: position,
         data: {
-          label: node.label,
-          numericId: node.numericId,
+          nodeNumber: node.nodeNumber,
         },
       };
     });

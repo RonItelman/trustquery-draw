@@ -83,7 +83,7 @@ const FlowDiagram = ({
       nodes: nodes.map(node => ({
         id: node.id,
         type: node.type,
-        label: node.data.label,
+        nodeNumber: node.data.nodeNumber,
         position: node.position,
         styleOverrides: node.data.styleOverrides,
       })),
@@ -177,7 +177,7 @@ const FlowDiagram = ({
         nodes: nodes.map(node => ({
           id: node.id,
           type: node.type,
-          label: node.data.label,
+          nodeNumber: node.data.nodeNumber,
           position: node.position,
           styleOverrides: node.data.styleOverrides,
         })),

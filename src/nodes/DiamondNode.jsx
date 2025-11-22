@@ -20,7 +20,7 @@ const DiamondNode = ({ data, selected, style = {}, id }) => {
           minSize: 60,
         };
       }}
-      renderShape={({ nodeStyle, estimatedSize, renderLabel, renderSelection, renderStyleInspector, renderNumericId, renderHandles }) => {
+      renderShape={({ nodeStyle, estimatedSize, renderLabel, renderSelection, renderStyleInspector, renderNodeNumber, renderHandles }) => {
         // Extract background and border for SVG
         const backgroundColor = nodeStyle.background;
         const borderColor = nodeStyle.border?.split(' ')[2] || '#1a192b';
@@ -64,8 +64,8 @@ const DiamondNode = ({ data, selected, style = {}, id }) => {
               />
             </svg>
 
-            {/* Numeric ID */}
-            {renderNumericId()}
+            {/* Node Number */}
+            {renderNodeNumber()}
 
             {/* Node Content */}
             {renderLabel()}

@@ -163,7 +163,7 @@ const StyleInspector = ({ selectedNode, onStyleChange, onCopyStyle, onPasteStyle
       <div style={{ padding: '16px' }}>
         <div style={{ marginBottom: '12px' }}>
           <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: 500, color: '#666' }}>
-            Node: {selectedNode.data.label}
+            Node: {selectedNode.id}
           </label>
         </div>
 

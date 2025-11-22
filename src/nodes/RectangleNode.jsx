@@ -14,7 +14,7 @@ const RectangleNode = ({ data, selected, style = {}, id }) => {
         height: parseFloat(nodeStyle.minHeight) || 60,
         minSize: 60,
       })}
-      renderShape={({ nodeStyle, renderLabel, renderSelection, renderStyleInspector, renderNumericId, renderHandles }) => (
+      renderShape={({ nodeStyle, renderLabel, renderSelection, renderStyleInspector, renderNodeNumber, renderHandles }) => (
         <>
           {renderSelection()}
           {renderStyleInspector()}
@@ -24,7 +24,7 @@ const RectangleNode = ({ data, selected, style = {}, id }) => {
             className="node-content trustquery-diagram-node-label"
             style={{...nodeStyle, whiteSpace: 'pre-wrap'}}
           >
-            {renderNumericId()}
+            {renderNodeNumber()}
             {renderLabel()}
           </div>
 

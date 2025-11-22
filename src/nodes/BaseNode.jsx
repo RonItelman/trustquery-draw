@@ -21,10 +21,10 @@ const BaseNode = ({
   const nodeStyle = { ...defaultStyle, ...styleOverrides };
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editedLabel, setEditedLabel] = useState(data.label);
+  const [editedLabel, setEditedLabel] = useState(id);
 
   // Calculate size (allow shapes to override)
-  const estimatedSize = calculateSize ? calculateSize(data.label, nodeStyle) : null;
+  const estimatedSize = calculateSize ? calculateSize(id, nodeStyle) : null;
 
   const { isResizing, handleResizeStart } = useResize({
     nodeId: id,
@@ -59,7 +59,7 @@ const BaseNode = ({
       handleLabelSubmit();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
-      setEditedLabel(data.label);
+      setEditedLabel(id);
     }
   };
 
@@ -98,7 +98,7 @@ const BaseNode = ({
           className="nodrag"
         />
       ) : (
-        data.label
+        id
       )}
     </div>
   );
@@ -181,9 +181,9 @@ const BaseNode = ({
     )
   );
 
-  // Numeric ID display (top-left corner inside node)
-  const renderNumericId = () => (
-    data.numericId != null && (
+  // Node number display (top-left corner inside node)
+  const renderNodeNumber = () => (
+    data.nodeNumber != null && (
       <div
         style={{
           position: 'absolute',
@@ -197,9 +197,9 @@ const BaseNode = ({
           fontFamily: 'monospace',
           userSelect: 'none',
         }}
-        title={`Node ID: ${data.numericId}`}
+        title={`Node #${data.nodeNumber} - Reference as :${data.nodeNumber}`}
       >
-        :{data.numericId}
+        :{data.nodeNumber}
       </div>
     )
   );
@@ -219,7 +219,7 @@ const BaseNode = ({
     renderLabel,
     renderSelection,
     renderStyleInspector,
-    renderNumericId,
+    renderNodeNumber,
     renderHandles,
   });
 };

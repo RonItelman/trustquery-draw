@@ -19,35 +19,46 @@ export class NodeBuilder {
 
   /**
    * Create or get a node
-   * @param {string} label - Node label
-   * @returns {string} Node ID
+   * @param {string} label - Node label (or :N reference)
+   * @returns {string} Node ID (resolved label)
    */
   ensureNode(label) {
     const trimmed = label.trim();
 
-    // Detect shape type based on the label text itself
-    const lowerLabel = trimmed.toLowerCase();
-    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
-
-    if (!this.nodes.has(trimmed)) {
-      // Assign numeric ID if IDManager is available
-      const numericId = this.idManager ? this.idManager.assignId(trimmed) : null;
-
-      const node = {
-        id: trimmed,
-        label: trimmed,
-        type: type,
-        numericId: numericId,
-      };
-
-      this.nodes.set(trimmed, node);
-      this.nodeOrder.push(trimmed);
-      console.log(`[NodeBuilder] Created node: ${trimmed} (type: ${type}, numericId: ${numericId}, order: ${this.nodeOrder.length - 1})`);
-    } else {
-      console.log(`[NodeBuilder] Node already exists: ${trimmed}`);
+    // Resolve :N references if IDManager is available
+    let resolvedLabel = trimmed;
+    if (this.idManager && trimmed.startsWith(':')) {
+      try {
+        resolvedLabel = this.idManager.resolveReference(trimmed);
+        console.log(`[NodeBuilder] Resolved reference ${trimmed} -> "${resolvedLabel}"`);
+      } catch (error) {
+        console.error(`[NodeBuilder] Error resolving reference: ${error.message}`);
+        throw error;
+      }
     }
 
-    return trimmed;
+    // Detect shape type based on the resolved label text
+    const lowerLabel = resolvedLabel.toLowerCase();
+    const type = this.shapeKeywords[lowerLabel] || 'rectangle';
+
+    if (!this.nodes.has(resolvedLabel)) {
+      // Assign node number if IDManager is available
+      const nodeNumber = this.idManager ? this.idManager.assignId(resolvedLabel) : null;
+
+      const node = {
+        id: resolvedLabel,        // ReactFlow ID (the label)
+        type: type,
+        nodeNumber: nodeNumber,   // Sequential reference number
+      };
+
+      this.nodes.set(resolvedLabel, node);
+      this.nodeOrder.push(resolvedLabel);
+      console.log(`[NodeBuilder] Created node: ${resolvedLabel} (type: ${type}, nodeNumber: ${nodeNumber}, order: ${this.nodeOrder.length - 1})`);
+    } else {
+      console.log(`[NodeBuilder] Node already exists: ${resolvedLabel}`);
+    }
+
+    return resolvedLabel;
   }
 
   /**
